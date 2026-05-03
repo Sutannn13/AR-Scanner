@@ -1,0 +1,642 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── CSS Variables ─────────────────────────────────── */
+:root {
+  --hud-cyan:   #00ffd5;
+  --hud-purple: #7b2fff;
+  --hud-bg:     #0a0a0f;
+  --hud-card:   #0d1117;
+  --hud-border: #1a2030;
+
+  /* Spacing tokens */
+  --app-padding: 12px;
+  --card-gap: 12px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+@media (min-width: 640px) {
+  :root {
+    --app-padding: 20px;
+    --card-gap: 16px;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --app-padding: 24px;
+    --card-gap: 20px;
+  }
+}
+
+/* ── Reset & Base ──────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--hud-bg);
+  color: #e0e0ff;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 16px;
+  overflow-x: hidden;
+  min-height: 100dvh;
+  width: 100%;
+  max-width: 100vw;
+  /* iOS Safari safe areas */
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bottom);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+}
+
+#root {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* ── CRT Scanline Overlay ──────────────────────────── */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 255, 213, 0.015) 0px,
+    rgba(0, 255, 213, 0.015) 1px,
+    transparent 1px,
+    transparent 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ── Scrollbar ─────────────────────────────────────── */
+::-webkit-scrollbar       { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: #0a0a0f; }
+::-webkit-scrollbar-thumb { background: rgba(0,255,213,0.3); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,255,213,0.5); }
+
+/* ── Typography helpers ────────────────────────────── */
+.font-mono-tech { font-family: 'Share Tech Mono', monospace; }
+
+/* ── Glow effects ──────────────────────────────────── */
+.glow-cyan  { text-shadow: 0 0 10px var(--hud-cyan), 0 0 30px rgba(0,255,213,0.5), 0 0 60px rgba(0,255,213,0.2); }
+.glow-box   {
+  box-shadow:
+    0 0 0 1px rgba(0,255,213,0.3),
+    0 0 30px rgba(0,255,213,0.1),
+    inset 0 0 30px rgba(0,255,213,0.03);
+}
+
+/* ── Shadow utilities ──────────────────────────────────── */
+.shadow-hud-glow {
+  box-shadow: 0 0 0 2px var(--hud-cyan), 0 0 40px rgba(0,255,213,0.25), 0 0 80px rgba(0,255,213,0.1);
+}
+
+.shadow-card-glow {
+  box-shadow: 0 0 0 1px rgba(0,255,213,0.3), 0 0 20px rgba(0,255,213,0.15);
+}
+
+/* ── Line clamp ──────────────────────────────────── */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════
+   APP LAYOUT — RESPONSIVE SHELL
+   ═══════════════════════════════════════════════════════ */
+
+.app-shell {
+  min-height: 100dvh;
+  background: var(--hud-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--app-padding);
+  padding-bottom: calc(var(--app-padding) + var(--safe-bottom));
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* ── Header ────────────────────────────────────────── */
+.app-header {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.header-icon {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(0,255,213,0.3);
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+.header-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.header-title {
+  font-size: 16px;
+  line-height: 1;
+  letter-spacing: 0.15em;
+}
+
+.header-subtitle {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 9px;
+  color: rgba(0,255,213,0.35);
+  letter-spacing: 0.2em;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.header-status {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.status-label {
+  display: none;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  color: rgba(0,255,213,0.4);
+}
+
+@media (min-width: 640px) {
+  .header-icon {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+  }
+  .header-title {
+    font-size: 18px;
+  }
+  .header-subtitle {
+    font-size: 10px;
+  }
+  .status-label {
+    display: block;
+  }
+}
+
+/* ── Main Content ──────────────────────────────────── */
+.app-main {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--card-gap);
+}
+
+/* ── Alerts ────────────────────────────────────────── */
+.alert-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 6px;
+}
+
+.alert-error {
+  border: 1px solid rgba(248,113,113,0.2);
+  background: rgba(248,113,113,0.05);
+}
+
+.alert-warning {
+  border: 1px solid rgba(250,204,21,0.2);
+  background: rgba(250,204,21,0.05);
+}
+
+/* ── Cooldown Banner ──────────────────────────────── */
+.cooldown-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(250,204,21,0.25);
+  background: linear-gradient(135deg, rgba(250,204,21,0.08) 0%, rgba(250,204,21,0.03) 100%);
+  animation: fade-in 0.3s ease-out;
+}
+
+.cooldown-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.cooldown-title {
+  display: block;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 13px;
+  color: #facc15;
+  letter-spacing: 0.1em;
+  font-weight: bold;
+}
+
+.cooldown-sub {
+  display: block;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11px;
+  color: rgba(250,204,21,0.5);
+  margin-top: 2px;
+}
+
+.cooldown-bar-track {
+  margin-top: 8px;
+  height: 3px;
+  border-radius: 3px;
+  background: rgba(250,204,21,0.15);
+  overflow: hidden;
+}
+
+.cooldown-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #facc15, #f59e0b);
+  animation: cooldown-shrink linear forwards;
+  transform-origin: left;
+}
+
+@keyframes cooldown-shrink {
+  from { width: 100%; }
+  to   { width: 0%; }
+}
+
+/* ── Scan Button Wrapper ──────────────────────────── */
+.scan-button-wrapper {
+  display: flex;
+  justify-content: center;
+  padding: 4px 0;
+}
+
+/* ── Scan Button Sizing ───────────────────────────── */
+.scan-btn {
+  /* Mobile: large touch target */
+  width: 72px;
+  height: 72px;
+  min-width: 60px;
+  min-height: 60px;
+  touch-action: manipulation;
+}
+
+@media (min-width: 640px) {
+  .scan-btn {
+    width: 88px;
+    height: 88px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .scan-btn {
+    width: 96px;
+    height: 96px;
+  }
+}
+
+/* ── Footer ────────────────────────────────────────── */
+.app-footer {
+  text-align: center;
+  padding: 16px 0;
+  margin-top: 8px;
+}
+
+.footer-text {
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  color: rgba(0,255,213,0.2);
+}
+
+@media (min-width: 640px) {
+  .footer-text {
+    font-size: 10px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   CAMERA VIEW — RESPONSIVE
+   ═══════════════════════════════════════════════════════ */
+
+.camera-container {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #000;
+  /* Mobile: taller camera for better viewfinder */
+  aspect-ratio: 3 / 4;
+  transition: all 0.5s ease;
+}
+
+.camera-active {
+  border: 2px solid var(--hud-cyan);
+  box-shadow: 0 0 0 2px var(--hud-cyan), 0 0 40px rgba(0,255,213,0.25), 0 0 80px rgba(0,255,213,0.1);
+}
+
+.camera-idle {
+  border: 2px solid rgba(26,32,48,0.5);
+}
+
+.camera-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+@media (min-width: 640px) {
+  .camera-container {
+    aspect-ratio: 4 / 3;
+    border-radius: 16px;
+  }
+}
+
+@media (min-width: 768px) {
+  .camera-container {
+    aspect-ratio: 16 / 10;
+    border-radius: 16px;
+  }
+}
+
+/* ── AR Corner Brackets ────────────────────────────── */
+.ar-bracket {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-color: var(--hud-cyan);
+  border-style: solid;
+  opacity: 0.8;
+  transition: all 0.3s ease;
+}
+.ar-tl { top:  10px; left:  10px; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+.ar-tr { top:  10px; right: 10px; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+.ar-bl { bottom: 10px; left:  10px; border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
+.ar-br { bottom: 10px; right: 10px; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+
+/* scanning state: brackets expand */
+.scanning .ar-bracket { width: 36px; height: 36px; opacity: 1; }
+
+/* ── Grid overlay for camera ───────────────────────── */
+.camera-grid {
+  background-image:
+    linear-gradient(rgba(0,255,213,0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,255,213,0.06) 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   TABLET LAYOUT (768px+)
+   ═══════════════════════════════════════════════════════ */
+
+@media (min-width: 768px) {
+  .app-shell {
+    padding: 24px;
+  }
+
+  .app-header {
+    max-width: 900px;
+  }
+
+  .app-main {
+    max-width: 900px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+
+  /* Camera spans full width on tablet */
+  .app-main > .camera-container {
+    grid-column: 1 / 2;
+    grid-row: 1 / 3;
+  }
+
+  .scan-button-wrapper {
+    grid-column: 1 / 2;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   DESKTOP LAYOUT (1024px+)
+   ═══════════════════════════════════════════════════════ */
+
+@media (min-width: 1024px) {
+  .app-shell {
+    padding: 32px;
+  }
+
+  .app-header {
+    max-width: 1200px;
+  }
+
+  .app-main {
+    max-width: 1200px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   ANIMATIONS
+   ═══════════════════════════════════════════════════════ */
+
+@keyframes scanline-vertical {
+  0%   { top: 0%; opacity: 1; }
+  100% { top: 100%; opacity: 0.3; }
+}
+
+@keyframes scanline-horizontal {
+  0%   { left: 0%; opacity: 1; }
+  100% { left: 100%; opacity: 0.3; }
+}
+
+@keyframes pulse-bright {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 8px var(--hud-cyan), 0 0 16px rgba(0,255,213,0.5);
+  }
+  50% {
+    opacity: 0.6;
+    box-shadow: 0 0 4px var(--hud-cyan), 0 0 8px rgba(0,255,213,0.3);
+  }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes spin-reverse {
+  from { transform: rotate(360deg); }
+  to   { transform: rotate(0deg); }
+}
+
+@keyframes radar {
+  0%   { transform: scale(0.5); opacity: 1; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(0,255,213,0.3), 0 0 20px rgba(0,255,213,0.1);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(0,255,213,0.5), 0 0 40px rgba(0,255,213,0.2);
+  }
+}
+
+@keyframes pulse-ring {
+  0%   { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(1.3); opacity: 0; }
+}
+
+@keyframes success-flash {
+  0%   { opacity: 0.3; }
+  50%  { opacity: 0.6; }
+  100% { opacity: 0; }
+}
+
+@keyframes slide-up {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes bracket-pulse {
+  0%, 100% { opacity: 0.8; }
+  50%       { opacity: 1; }
+}
+
+@keyframes corner-glow {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 1; }
+}
+
+@keyframes scan-complete {
+  0%   { opacity: 0; }
+  50%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes pulse-bar {
+  0%, 100% { opacity: 0.3; transform: scaleY(1); }
+  50%       { opacity: 1; transform: scaleY(1.5); }
+}
+
+/* ── Scan line gradients ──────────────────────────────────── */
+.scan-line-gradient {
+  background: linear-gradient(90deg, transparent, #00ffd5 20%, #00ffd5 80%, transparent);
+  box-shadow: 0 0 15px #00ffd5, 0 0 40px rgba(0,255,213,0.6);
+}
+
+.scan-line-gradient-purple {
+  background: linear-gradient(180deg, transparent, #7b2fff 20%, #7b2fff 80%, transparent);
+  box-shadow: 0 0 15px #7b2fff, 0 0 40px rgba(123,47,255,0.6);
+}
+
+/* ── Processing overlay ──────────────────────────────────── */
+.bg-processing-overlay {
+  background: linear-gradient(135deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.7) 100%);
+}
+
+/* ── Animation utilities ──────────────────────────────────── */
+.animate-scanline-vertical  { animation: scanline-vertical 2s linear infinite; }
+.animate-scanline-horizontal{ animation: scanline-horizontal 2s linear infinite; }
+.animate-pulse-bright       { animation: pulse-bright 1s ease-in-out infinite; }
+.animate-spin-slow          { animation: spin-slow 2s linear infinite; }
+.animate-spin-reverse       { animation: spin-reverse 1.5s linear infinite; }
+.animate-radar              { animation: radar 2s ease-out infinite; }
+.animate-glow-pulse         { animation: glow-pulse 2s ease-in-out infinite; }
+.animate-pulse-ring         { animation: pulse-ring 1.5s ease-out infinite; }
+.animate-success-flash      { animation: success-flash 0.8s ease-out forwards; }
+.animate-slide-up           { animation: slide-up 0.4s ease-out forwards; }
+.animate-fade-in            { animation: fade-in 0.4s ease-out forwards; }
+.animate-bracket-pulse      { animation: bracket-pulse 0.5s ease-in-out infinite; }
+.animate-corner-glow        { animation: corner-glow 0.8s ease-in-out infinite; }
+.animate-scan-complete      { animation: scan-complete 0.6s ease-out forwards; }
+.animate-pulse-bar          { animation: pulse-bar 0.8s ease-in-out infinite; }
+.animate-pulse-glow         { animation: glow-pulse 2s ease-in-out infinite; }
+
+/* ── Animation delay utilities ──────────────────────────────────── */
+.animation-delay-200 { animation-delay: 0.2s; }
+.animation-delay-400 { animation-delay: 0.4s; }
+.animation-delay-600 { animation-delay: 0.6s; }
+.animation-delay-100 { animation-delay: 0.1s; }
+.animation-delay-300 { animation-delay: 0.3s; }
+
+/* ── Selection styling ──────────────────────────────────── */
+::selection {
+  background: rgba(0,255,213,0.3);
+  color: #ffffff;
+}
+
+/* ── Focus styling ──────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--hud-cyan);
+  outline-offset: 2px;
+}
+
+/* ── Touch & tap ──────────────────────────────────── */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button, a {
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+/* All interactive elements: minimum touch target */
+button {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* ── Performance: reduce motion for low-end devices ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
