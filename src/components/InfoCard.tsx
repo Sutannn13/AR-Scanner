@@ -200,9 +200,11 @@ export function InfoCard({ result, onClose }: Props) {
               className={`flex items-center gap-1 px-2 py-0.5 rounded-full font-mono-tech text-[8px] tracking-wider ${
                 result.providerUsed === 'Gemini'
                   ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/25'
-                  : result.providerUsed === 'Groq'
-                  ? 'bg-orange-500/15 text-orange-400 border border-orange-500/25'
-                  : 'bg-violet-500/15 text-violet-400 border border-violet-500/25'
+                  : result.providerUsed === 'OpenRouter'
+                  ? 'bg-violet-500/15 text-violet-400 border border-violet-500/25'
+                  : result.providerUsed === 'Together'
+                  ? 'bg-pink-500/15 text-pink-400 border border-pink-500/25'
+                  : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25'
               }`}
             >
               <Bot size={8} />

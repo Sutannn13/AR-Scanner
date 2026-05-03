@@ -2,21 +2,19 @@ import type { ScanResult } from '../types'
 
 // ── MULTI-PROVIDER AI SERVICE ────────────────────────────────────────────────
 // Fallback chain:
-//   1. Gemini  gemini-2.0-flash-lite     (PRIMARY)
-//   2. Gemini  gemini-2.0-flash          (FALLBACK 1)
-//   3. OpenRouter qwen/qwen3-vl-8b-instruct (FALLBACK 2, FREE)
-//   4. OpenRouter google/gemma-3-12b-it:free (FALLBACK 3, FREE)
-//
-// PROVIDERS WITHOUT WORKING VISION MODELS (disabled):
-//   - Groq: llama-3.2-11b-vision-preview DECOMMISSIONED, no replacement found
+//   1. Gemini  gemini-2.0-flash-lite         (PRIMARY)
+//   2. Gemini  gemini-2.0-flash             (FALLBACK 1)
+//   3. OpenRouter qwen/qwen3-vl-8b-instruct (FALLBACK 2)
+//   4. OpenRouter google/gemma-3-12b-it:free(FALLBACK 3)
+//   5. Together meta-llama/Llama-Vision-Free (FALLBACK 4)
+//   6. HuggingFace blip-image-captioning-large(FALLBACK 5)
 //
 // COOLDOWN IS PER-PROVIDER:
-//   - Gemini 429 → skip both Gemini slots, instantly try OpenRouter
-//   - OpenRouter 429 → skip OpenRouter, try next slot
+///  - One provider's 429 does NOT block any other provider
 //   - Scan button is NEVER blocked by cooldown
 
 // ── Provider types ───────────────────────────────────────────────────────────
-type ProviderName = 'Gemini' | 'Groq' | 'OpenRouter'
+type ProviderName = 'Gemini' | 'OpenRouter' | 'Together' | 'HuggingFace'
 
 interface ModelSlot {
   provider: ProviderName
@@ -52,13 +50,16 @@ Aturan penting:
 // ── Startup log ──────────────────────────────────────────────────────────────
 ;(() => {
   const gk = import.meta.env.VITE_GEMINI_API_KEY
-  const qk = import.meta.env.VITE_GROQ_API_KEY
   const ok = import.meta.env.VITE_OPENROUTER_API_KEY
+  const tk = import.meta.env.VITE_TOGETHER_API_KEY
+  const hk = import.meta.env.VITE_HF_API_KEY
   console.log('[AR Scanner] ═══ Multi-Provider AI Service ═══')
-  console.log('[AR Scanner]  1. Gemini gemini-2.0-flash-lite', gk ? '✅' : '❌ no key')
-  console.log('[AR Scanner]  2. Gemini gemini-2.0-flash     ', gk ? '✅' : '❌ no key')
-  console.log('[AR Scanner]  3. OpenRouter qwen3-vl-8b       ', ok ? '✅' : '❌ no key')
+  console.log('[AR Scanner]  1. Gemini gemini-2.0-flash-lite   ', gk ? '✅' : '❌ no key')
+  console.log('[AR Scanner]  2. Gemini gemini-2.0-flash        ', gk ? '✅' : '❌ no key')
+  console.log('[AR Scanner]  3. OpenRouter qwen3-vl-8b          ', ok ? '✅' : '❌ no key')
   console.log('[AR Scanner]  4. OpenRouter gemma-3-12b-it:free ', ok ? '✅' : '❌ no key')
+  console.log('[AR Scanner]  5. Together Llama-Vision-Free      ', tk ? '✅' : '❌ no key')
+  console.log('[AR Scanner]  6. HuggingFace blip-caption-large ', hk ? '✅' : '❌ no key')
   console.log('[AR Scanner] ═════════════════════════════════')
 })()
 
@@ -67,8 +68,9 @@ Aturan penting:
 // block other providers.
 const providerCooldownUntil: Record<ProviderName, number> = {
   Gemini: 0,
-  Groq: 0,
   OpenRouter: 0,
+  Together: 0,
+  HuggingFace: 0,
 }
 
 function setProviderCooldown(provider: ProviderName, seconds: number) {
@@ -187,7 +189,7 @@ async function callGemini(base64Jpeg: string, model: string): Promise<ScanResult
     const errText = await response.text()
     const retryMatch = errText.match(/"retryDelay":\s*"(\d+)s"/)
     const retrySeconds = retryMatch ? parseInt(retryMatch[1], 10) : 30
-    // Per-provider cooldown — does NOT block Groq/OpenRouter
+    // Per-provider cooldown — does NOT block other providers
     setProviderCooldown('Gemini', retrySeconds)
     notifyCooldownUI(retrySeconds)
     throw new Error(`Gemini ${model} rate limited (429)`)
@@ -329,6 +331,160 @@ async function callOpenRouterGemma(base64Jpeg: string): Promise<ScanResult> {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+//  PROVIDER 5: TOGETHER AI (OpenAI-compatible)
+// ═══════════════════════════════════════════════════════════════════════════════
+async function callTogether(base64Jpeg: string): Promise<ScanResult> {
+  const apiKey = import.meta.env.VITE_TOGETHER_API_KEY
+  if (!apiKey) throw new Error('Together API key not configured')
+
+  await waitForRateLimit()
+
+  const model = 'meta-llama/Llama-Vision-Free'
+  const url = 'https://api.together.xyz/v1/chat/completions'
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'image_url',
+              image_url: { url: `data:image/jpeg;base64,${base64Jpeg}` },
+            },
+            {
+              type: 'text',
+              text: 'Analisa gambar ini dan kembalikan JSON sesuai format.',
+            },
+          ],
+        },
+      ],
+      temperature: 0.7,
+      max_tokens: 1024,
+    }),
+  })
+
+  if (response.status === 429) {
+    setProviderCooldown('Together', 60)
+    throw new Error('Together Llama-Vision rate limited (429)')
+  }
+
+  if (!response.ok) {
+    const errText = await response.text()
+    throw new Error(`Together error ${response.status}: ${errText.slice(0, 200)}`)
+  }
+
+  const data = await response.json()
+  const text = data?.choices?.[0]?.message?.content
+  if (!text) throw new Error('Together: respons kosong')
+
+  const parsed = parseAIResponse(text.trim())
+  return buildResult(parsed, base64Jpeg, 'Together', model)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  PROVIDER 6: HUGGING FACE — BLIP image captioning
+//  Returns plain description text, not JSON.
+//  We use the caption to build a structured ScanResult.
+// ═══════════════════════════════════════════════════════════════════════════════
+async function callHuggingFace(base64Jpeg: string): Promise<ScanResult> {
+  const apiKey = import.meta.env.VITE_HF_API_KEY
+  if (!apiKey) throw new Error('HuggingFace API key not configured')
+
+  await waitForRateLimit()
+
+  // Decode base64 to binary Blob for multipart/form-data
+  const binaryString = atob(base64Jpeg)
+  const bytes = new Uint8Array(binaryString.length)
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i)
+  }
+  const imageBlob = new Blob([bytes], { type: 'image/jpeg' })
+
+  const formData = new FormData()
+  formData.append('inputs', imageBlob, 'image.jpg')
+
+  const response = await fetch(
+    'https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-large',
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: formData,
+    },
+  )
+
+  if (response.status === 429) {
+    setProviderCooldown('HuggingFace', 60)
+    throw new Error('HuggingFace rate limited (429)')
+  }
+
+  if (!response.ok) {
+    const errText = await response.text()
+    throw new Error(`HuggingFace error ${response.status}: ${errText.slice(0, 200)}`)
+  }
+
+  // BLIP returns a plain string caption, not JSON
+  const caption: string = await response.json()
+
+  // Build a structured result from the caption text
+  const parsed = buildResultFromCaption(caption)
+  return buildResult(parsed, base64Jpeg, 'HuggingFace', 'Salesforce/blip-image-captioning-large')
+}
+
+// ── Build structured result from a plain caption (no JSON available) ────────
+function buildResultFromCaption(caption: string): Record<string, unknown> {
+  // Caption is like "a red apple on a wooden table"
+  const name = caption.split(/[,.]/)[0].trim()
+  const nameMap: Record<string, { objectName: string; category: string }> = {
+    'a red apple': { objectName: 'Apel Merah', category: 'Makanan' },
+    'a green apple': { objectName: 'Apel Hijau', category: 'Makanan' },
+    'a banana': { objectName: 'Pisang', category: 'Makanan' },
+    'a cat': { objectName: 'Kucing', category: 'Hewan' },
+    'a dog': { objectName: 'Anjing', category: 'Hewan' },
+    'a book': { objectName: 'Buku', category: 'Buku' },
+    'a phone': { objectName: 'Telepon', category: 'Elektronik' },
+    'a laptop': { objectName: 'Laptop', category: 'Elektronik' },
+    'a car': { objectName: 'Mobil', category: 'Kendaraan' },
+    'a bicycle': { objectName: 'Sepeda', category: 'Kendaraan' },
+  }
+
+  const lower = caption.toLowerCase()
+  let match = nameMap['a ' + lower.split(' ').slice(0, 2).join(' ')]
+    ?? nameMap[lower.split(/[,.]/)[0].trim()]
+    ?? null
+
+  if (!match) {
+    match = {
+      objectName: name.split(' ').slice(0, 3).map((w: string) =>
+        w.charAt(0).toUpperCase() + w.slice(1),
+      ).join(' ') || caption.slice(0, 30),
+      category: 'Lainnya',
+    }
+  }
+
+  return {
+    objectName: match.objectName,
+    category: match.category,
+    description: `Objek yang diidentifikasi: ${caption}. ${caption.charAt(0).toUpperCase() + caption.slice(1)}.`,
+    funFacts: [
+      `Deskripsi dari AI HuggingFace BLIP: "${caption}"`,
+      'Model BLIP (Bootstrapped Language-Image Pretraining) dari Salesforce.',
+      'Tidak bisa mengenali lebih detail tanpa API berbayar.',
+    ],
+    confidence: 0.75,
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 //  MAIN: analyzeImage with full fallback chain
 //  - Cooldown is PER-PROVIDER: skips cooled-down providers, tries the rest
 //  - Scan button is NEVER blocked
@@ -364,12 +520,28 @@ export async function analyzeImage(base64Jpeg: string): Promise<ScanResult> {
     })
   }
 
+  if (import.meta.env.VITE_TOGETHER_API_KEY) {
+    allSlots.push({
+      provider: 'Together',
+      model: 'meta-llama/Llama-Vision-Free',
+      call: callTogether,
+    })
+  }
+
+  if (import.meta.env.VITE_HF_API_KEY) {
+    allSlots.push({
+      provider: 'HuggingFace',
+      model: 'Salesforce/blip-image-captioning-large',
+      call: callHuggingFace,
+    })
+  }
+
   if (allSlots.length === 0) {
     throw new Error('❌ Tidak ada API key yang dikonfigurasi.\nTambahkan minimal VITE_GEMINI_API_KEY di file .env')
   }
 
   // FILTER OUT providers that are currently in cooldown
-  // This is the key fix: Gemini cooldown → skip Gemini, try Groq immediately
+  // Key: one provider's 429 → skip only that provider, try others instantly
   const activeSlots = allSlots.filter((slot) => {
     if (isProviderInCooldown(slot.provider)) {
       console.log(`[AR Scanner] ⏭️ Skipping ${slot.provider} (${slot.model}) — in cooldown`)

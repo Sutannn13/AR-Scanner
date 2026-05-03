@@ -8,7 +8,7 @@ export interface ScanResult {
   funFacts: string[]
   confidence: number          // 0–1
   modelUsed?: string          // which model was used (e.g. gemini-2.0-flash-lite)
-  providerUsed?: 'Gemini' | 'Groq' | 'OpenRouter'  // which AI provider answered
+  providerUsed?: 'Gemini' | 'OpenRouter' | 'Together' | 'HuggingFace'
 }
 
 export type ScanStatus = 'idle' | 'scanning' | 'processing' | 'done' | 'error' | 'cooldown'

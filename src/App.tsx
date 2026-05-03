@@ -54,9 +54,11 @@ export default function App() {
     }
   }, [status, captureFrame, setStatus, setError, addResult])
 
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY
   const hasApiKey = Boolean(
-    import.meta.env.VITE_GEMINI_API_KEY &&
-    import.meta.env.VITE_GEMINI_API_KEY !== 'your-gemini-api-key'
+    apiKey &&
+    apiKey !== 'your-gemini-api-key' &&
+    apiKey.trim().length > 0
   )
 
   return (
