@@ -54,11 +54,11 @@ export default function App() {
     }
   }, [status, captureFrame, setStatus, setError, addResult])
 
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY
-  const hasApiKey = Boolean(
-    apiKey &&
-    apiKey !== 'your-gemini-api-key' &&
-    apiKey.trim().length > 0
+  const hasAnyKey = !!(
+    import.meta.env.VITE_GEMINI_API_KEY?.trim() ||
+    import.meta.env.VITE_OPENROUTER_API_KEY?.trim() ||
+    import.meta.env.VITE_TOGETHER_API_KEY?.trim() ||
+    import.meta.env.VITE_HF_API_KEY?.trim()
   )
 
   return (
@@ -105,7 +105,7 @@ export default function App() {
         )}
 
         {/* API Key Warning */}
-        {!hasApiKey && (
+        {!hasAnyKey && (
           <div className="alert-box alert-warning">
             <AlertCircle size={14} className="text-yellow-400 flex-shrink-0 mt-0.5" />
             <div className="font-hud text-sm text-yellow-400">

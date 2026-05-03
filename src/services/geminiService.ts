@@ -157,7 +157,7 @@ function buildResult(
 // ═══════════════════════════════════════════════════════════════════════════════
 async function callGemini(base64Jpeg: string, model: string): Promise<ScanResult> {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string
-  if (!apiKey || apiKey === 'your-gemini-api-key') {
+  if (!apiKey?.trim()) {
     throw new Error('Gemini API key not configured')
   }
 
