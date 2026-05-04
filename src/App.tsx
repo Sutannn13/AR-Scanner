@@ -1,19 +1,136 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { AlertCircle, Cpu, Wifi, Timer } from 'lucide-react'
 import { useCamera }    from './hooks/useCamera'
-import { useScanStore } from './store/scanStore'
+import { useObjectDetector } from './hooks/useObjectDetector'
+import { useStableObject } from './hooks/useStableObject'
+import { useScanStore, useARStore } from './store/scanStore'
 import { analyzeImage, onCooldownTick } from './services/geminiService'
 import { CameraView }   from './components/CameraView'
 import { ScanButton }   from './components/ScanButton'
 import { InfoCard }     from './components/InfoCard'
 import { ScanHistory }  from './components/ScanHistory'
+import type { DetectionResult, ScanResult } from './types'
 
 export default function App() {
   const { videoRef, ready, camError, captureFrame } = useCamera()
+
+  // ── Object Detection (MediaPipe) ──────────────────────────────────────────
+  const {
+    detections,
+    isModelReady: isDetectorReady,
+    isDetecting,
+    modelError,
+    videoRef: detectorVideoRef,
+    videoWidth,
+    videoHeight,
+  } = useObjectDetector()
+
+  // ── AR Store untuk overlay state ───────────────────────────────────────────
+  const {
+    arOverlay,
+    isAIAnalyzing,
+    trackedLabel,
+    setAROverlay,
+    setIsAIAnalyzing,
+    setTrackedLabel,
+    clearAROverlay,
+  } = useARStore()
+
   const {
     status, current, history, error, cooldownSeconds,
     setStatus, setError, addResult, setCurrent, setCooldown,
   } = useScanStore()
+
+  // Refs
+  const analysisInProgressRef = useRef(false)
+
+  // ── Stability tracking untuk objek yang terdeteksi ─────────────────────────
+  const { stableObject, updateDetections, resetStability } = useStableObject({
+    // Objek harus stabil selama 3 detik sebelum di-analisis AI
+    stabilityThresholdMs: 3000,
+    // Callback saat objek stabil
+    onStable: (obj) => {
+      console.log(`[AR] 🟢 Objek stabil terdeteksi: ${obj.label} (${Math.round(obj.progress * 100)}%)`)
+
+      // Set tracked label dan mulai AR overlay
+      setTrackedLabel(obj.label)
+      setAROverlay({
+        targetLabel: obj.label,
+        bbox: obj.bbox,
+        result: null, // belum ada hasil AI
+        isAnalyzing: false,
+        showProgress: true,
+      })
+
+      // Trigger analisis AI (hanya kalau belum sedang analisis)
+      if (!analysisInProgressRef.current) {
+        triggerAIRecognition(obj.label)
+      }
+    },
+    // Callback saat objek hilang dari frame
+    onLost: (label) => {
+      console.log(`[AR] 🔴 Objek hilang dari frame: ${label}`)
+      if (trackedLabel === label) {
+        clearAROverlay()
+        analysisInProgressRef.current = false
+      }
+    },
+  })
+
+  // ── Update detections ke stability tracker ─────────────────────────────────
+  useEffect(() => {
+    if (detections.length > 0) {
+      updateDetections(detections)
+    }
+  }, [detections, updateDetections])
+
+  // ── Trigger AI recognition untuk objek stabil ──────────────────────────────
+  const triggerAIRecognition = useCallback(async (label: string) => {
+    // Cegah multiple analysis gleichzeitig
+    if (analysisInProgressRef.current) return
+    analysisInProgressRef.current = true
+
+    setIsAIAnalyzing(true)
+    setAROverlay({
+      targetLabel: label,
+      bbox: stableObject?.bbox ?? { originX: 0, originY: 0, width: 0, height: 0 },
+      result: null,
+      isAnalyzing: true,
+      showProgress: true,
+    })
+
+    try {
+      // Capture frame dari video
+      const base64 = captureFrame()
+      if (!base64) {
+        throw new Error('Gagal mengambil gambar dari kamera')
+      }
+
+      // Panggil AI service
+      console.log(`[AR] 🤖 Memulai analisis AI untuk: ${label}`)
+      const result = await analyzeImage(base64)
+
+      // Update overlay dengan hasil
+      setAROverlay({
+        targetLabel: label,
+        bbox: stableObject?.bbox ?? { originX: 0, originY: 0, width: 0, height: 0 },
+        result,
+        isAnalyzing: false,
+        showProgress: false,
+      })
+
+      // Simpan ke history juga
+      addResult(result)
+      console.log(`[AR] ✅ Analisis selesai: ${result.objectName}`)
+    } catch (err) {
+      console.error(`[AR] ❌ Analisis gagal:`, err)
+      // Reset overlay on error
+      clearAROverlay()
+    } finally {
+      analysisInProgressRef.current = false
+      setIsAIAnalyzing(false)
+    }
+  }, [captureFrame, addResult, clearAROverlay, setAROverlay, setIsAIAnalyzing, stableObject])
 
   // ── Listen to cooldown ticks (informational only, never blocks scan) ──
   useEffect(() => {
@@ -93,10 +210,25 @@ export default function App() {
       {/* ── Main Content ───────────────────────────────────────── */}
       <main className="app-main">
 
-        {/* Camera View */}
-        <CameraView videoRef={videoRef} status={status} ready={ready} />
+        {/* Camera View with AR overlays */}
+        <CameraView
+          videoRef={detectorVideoRef}
+          status={status}
+          ready={ready}
+          detections={detections}
+          stableObject={stableObject}
+          videoWidth={videoWidth}
+          videoHeight={videoHeight}
+          arOverlay={arOverlay}
+        />
 
-        {/* Camera Error */}
+        {/* Model Error dari MediaPipe */}
+        {modelError && (
+          <div className="alert-box alert-warning">
+            <AlertCircle size={14} className="text-yellow-400 flex-shrink-0 mt-0.5" />
+            <span className="font-hud text-sm text-yellow-400">{modelError}</span>
+          </div>
+        )}
         {camError && (
           <div className="alert-box alert-error">
             <AlertCircle size={14} className="text-red-400 flex-shrink-0 mt-0.5" />

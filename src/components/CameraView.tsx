@@ -1,9 +1,34 @@
-import type { ScanStatus } from '../types'
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPONENT CameraView
+// Viewport utama untuk camera feed dengan AR overlay.
+//
+// Props:
+// - videoRef: ref ke video element
+// - status: status scan
+// - ready: apakah camera ready
+// - detections: hasil deteksi objek (optional, untuk AR overlay)
+// - stableObject: objek yang sudah stabil (optional)
+// - onDetectionsChange: callback saat detections berubah
+// - videoWidth/videoHeight: dimensi video untuk positioning overlay
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { useEffect } from 'react'
+import type { ScanStatus, DetectionResult, DetectedObject, BoundingBox } from '../types'
+import { DetectionBox } from './DetectionBox'
+import { FloatingARLabel } from './FloatingARLabel'
 
 interface Props {
   videoRef: React.RefObject<HTMLVideoElement>
   status: ScanStatus
   ready: boolean
+  // Props untuk AR overlay
+  detections?: DetectionResult[]
+  stableObject?: DetectedObject | null
+  onDetectionsChange?: (detections: DetectionResult[]) => void
+  videoWidth?: number
+  videoHeight?: number
+  // AR overlay dari store
+  arOverlay?: { targetLabel: string; bbox: BoundingBox; result: any; isAnalyzing: boolean } | null
 }
 
 const STATUS_LABEL: Record<ScanStatus, string> = {
@@ -15,9 +40,40 @@ const STATUS_LABEL: Record<ScanStatus, string> = {
   cooldown: 'COOLDOWN',
 }
 
-export function CameraView({ videoRef, status, ready }: Props) {
+// Konversi bbox normalisasi ke pixel coordinates
+function normalizeBboxToPixel(
+  bbox: BoundingBox,
+  videoWidth: number,
+  videoHeight: number
+): BoundingBox {
+  return {
+    originX: bbox.originX * videoWidth,
+    originY: bbox.originY * videoHeight,
+    width: bbox.width * videoWidth,
+    height: bbox.height * videoHeight,
+  }
+}
+
+export function CameraView({
+  videoRef,
+  status,
+  ready,
+  detections = [],
+  stableObject = null,
+  onDetectionsChange,
+  videoWidth = 0,
+  videoHeight = 0,
+  arOverlay = null,
+}: Props) {
   const isActive = status === 'scanning'
   const isProcessing = status === 'processing'
+
+  // Notify parent tentang detections
+  useEffect(() => {
+    if (onDetectionsChange) {
+      onDetectionsChange(detections)
+    }
+  }, [detections, onDetectionsChange])
 
   return (
     <div
@@ -37,6 +93,46 @@ export function CameraView({ videoRef, status, ready }: Props) {
 
       {/* ── Camera Grid Overlay ── */}
       <div className="absolute inset-0 camera-grid opacity-40 pointer-events-none" />
+
+      {/* ── AR Detection Overlays (bounding boxes + labels) ── */}
+      {/* Loop through detections dan render bounding boxes */}
+      {detections.map((detection, idx) => {
+        const isThisStable = stableObject?.label === detection.label
+        const pixelBbox = normalizeBboxToPixel(
+          detection.boundingBox,
+          videoWidth || 1,
+          videoHeight || 1
+        )
+        return (
+          <DetectionBox
+            key={`detection-${idx}-${detection.label}`}
+            bbox={pixelBbox}
+            label={detection.label}
+            confidence={detection.confidence}
+            progress={isThisStable ? stableObject.progress : null}
+            isStable={isThisStable}
+            videoWidth={videoWidth || 1}
+            videoHeight={videoHeight || 1}
+          />
+        )
+      })}
+
+      {/* ── Floating AR Label untuk objek stabil ── */}
+      {stableObject && (
+        <FloatingARLabel
+          label={stableObject.label}
+          confidence={stableObject.confidence}
+          isAnalyzing={arOverlay?.isAnalyzing ?? false}
+          result={arOverlay?.result ?? null}
+          bbox={normalizeBboxToPixel(
+            stableObject.bbox,
+            videoWidth || 1,
+            videoHeight || 1
+          )}
+          videoWidth={videoWidth || 1}
+          videoHeight={videoHeight || 1}
+        />
+      )}
 
       {/* ── AR Corner Brackets with animation ── */}
       <div className={`pointer-events-none ${isActive ? 'animate-bracket-pulse' : ''}`}>

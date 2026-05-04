@@ -1,6 +1,34 @@
 import { create } from 'zustand'
-import type { ScanResult, ScanStatus } from '../types'
+import type { ScanResult, ScanStatus, AROverlay } from '../types'
 
+interface ARState {
+  // Overlay AR yang sedang aktif
+  arOverlay: AROverlay | null
+  // Apakah AI sedang menganalisis objek stabil
+  isAIAnalyzing: boolean
+  // Objek yang sedang di-track
+  trackedLabel: string | null
+
+  // Actions
+  setAROverlay: (overlay: AROverlay | null) => void
+  setIsAIAnalyzing: (analyzing: boolean) => void
+  setTrackedLabel: (label: string | null) => void
+  clearAROverlay: () => void
+}
+
+// Store untuk AR state
+export const useARStore = create<ARState>((set) => ({
+  arOverlay: null,
+  isAIAnalyzing: false,
+  trackedLabel: null,
+
+  setAROverlay: (overlay) => set({ arOverlay: overlay }),
+  setIsAIAnalyzing: (analyzing) => set({ isAIAnalyzing: analyzing }),
+  setTrackedLabel: (label) => set({ trackedLabel: label }),
+  clearAROverlay: () => set({ arOverlay: null, isAIAnalyzing: false, trackedLabel: null }),
+}))
+
+// Store asli tetap ada untuk backward compatibility
 interface ScanStore {
   status: ScanStatus
   history: ScanResult[]
