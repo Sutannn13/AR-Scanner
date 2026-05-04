@@ -17,6 +17,20 @@ import type { DetectionResult, BoundingBox } from '../types'
 // Tidak terlalu sering (hemat CPU) tapi cukup realtime
 const DETECTION_INTERVAL_MS = 300
 
+// Model configuration - can be overridden via env var
+const MODEL_CONFIG = {
+  wasmPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm',
+
+  modelPath: import.meta.env.VITE_MEDIAPIPE_MODEL_PATH ||
+     'https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/float32/1/efficientdet_lite0.tflite',
+
+  delegate: 'GPU' as const,
+}
+
+interface UseObjectDetectorProps {
+  cameraReady: boolean
+}
+
 interface UseObjectDetectorReturn {
   detections: DetectionResult[]
   isModelReady: boolean
@@ -27,7 +41,7 @@ interface UseObjectDetectorReturn {
   videoHeight: number
 }
 
-export function useObjectDetector(): UseObjectDetectorReturn {
+export function useObjectDetector({ cameraReady }: UseObjectDetectorProps): UseObjectDetectorReturn {
   const [detections, setDetections] = useState<DetectionResult[]>([])
   const [isModelReady, setIsModelReady] = useState(false)
   const [isDetecting, setIsDetecting] = useState(false)
@@ -39,47 +53,66 @@ export function useObjectDetector(): UseObjectDetectorReturn {
   const detectorRef = useRef<ObjectDetector | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const lastDetectionRef = useRef<DetectionResult[]>([])
+  const initAttemptRef = useRef(0)
+  const isInitializedRef = useRef(false)
 
   // ── Inisialisasi MediaPipe ObjectDetector ────────────────────────────────
   useEffect(() => {
+    // Only initialize after camera is ready
+    if (!cameraReady) {
+      console.log('[useObjectDetector] ⏳ Menunggu kamera siap sebelum init detector...')
+      return
+    }
+
+    // Skip if already initialized successfully
+    if (isInitializedRef.current) {
+      return
+    }
+
     let cancelled = false
+    const currentAttempt = ++initAttemptRef.current
 
     async function initDetector() {
       try {
         console.log('[useObjectDetector] 🔄 Memuat model MediaPipe ObjectDetector...')
+        console.log('[useObjectDetector] 📦 WASM Path:', MODEL_CONFIG.wasmPath)
+        console.log('[useObjectDetector] 🤖 Model Path:', MODEL_CONFIG.modelPath)
 
         // FilesetResolver diperlukan untuk inisialisasi MediaPipe WASM
-        const vision = await FilesetResolver.forVisionTasks(
-          'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm'
-        )
+        const vision = await FilesetResolver.forVisionTasks(MODEL_CONFIG.wasmPath)
+
+        // Check if this attempt is still current (not cancelled)
+        if (cancelled || currentAttempt !== initAttemptRef.current) {
+          console.log('[useObjectDetector] ⏹️ Init cancelled or stale, aborting')
+          return
+        }
 
         // Buat ObjectDetector dengan model EfficientDet-Lite0
         // Model ini cukup ringan untuk browser dan cukup akurat
         const detector = await ObjectDetector.createFromOptions(vision, {
           baseOptions: {
-            // Model EfficientDet-Lite0 - ringan dan cepat
-            modelAssetPath:
-              'https://storage.googleapis.com/mediapipe-assets/EfficientDet-Lite0/v2.tflite',
-            delegate: 'GPU', // Gunakan GPU kalau tersedia
+            modelAssetPath: MODEL_CONFIG.modelPath,
+            delegate: MODEL_CONFIG.delegate,
           },
-          // Threshold confidence minimum
           runningMode: 'VIDEO',
-          // Score minimal untuk deteksi (0–1)
-          // Di bawah 0.5 biasanya noise, di atas 0.7 cukup reliable
-          // Diset 0.5 sebagai default, bisa disesuaikan
-          // categoryAllowlist: [],  // kosong = deteksi semua kategori
         })
 
-        if (cancelled) return
+        // Double-check after async operation
+        if (cancelled || currentAttempt !== initAttemptRef.current) {
+          console.log('[useObjectDetector] ⏹️ Init cancelled or stale after model creation, aborting')
+          detector.close()
+          return
+        }
 
         detectorRef.current = detector
+        isInitializedRef.current = true
         setIsModelReady(true)
         console.log('[useObjectDetector] ✅ Model ObjectDetector siap!')
       } catch (err) {
         console.error('[useObjectDetector] ❌ Gagal memuat model:', err)
-        if (!cancelled) {
+        if (!cancelled && currentAttempt === initAttemptRef.current) {
           setModelError(
-            'Gagal memuat model deteksi objek. Pastikan koneksi internet stabil.'
+            'Mode realtime gagal, tetapi manual scan tetap bisa digunakan.'
           )
         }
       }
@@ -97,13 +130,16 @@ export function useObjectDetector(): UseObjectDetectorReturn {
       // Cleanup interval
       if (intervalRef.current) {
         clearInterval(intervalRef.current)
+        intervalRef.current = null
       }
+      isInitializedRef.current = false
     }
-  }, [])
+  }, [cameraReady])
 
   // ── Deteksi loop: jalan setiap DETECTION_INTERVAL_MS ────────────────────
   useEffect(() => {
-    if (!isModelReady) return
+    // Only run detection loop when model is ready AND camera is ready
+    if (!isModelReady || !cameraReady) return
 
     const runDetection = async () => {
       const video = videoRef.current
@@ -111,8 +147,10 @@ export function useObjectDetector(): UseObjectDetectorReturn {
 
       if (!video || !detector) return
 
-      // Video harus sudah memiliki frame (loadedmetadata)
-      if (video.readyState < 2) return
+      // Video harus sudah memiliki frame (readyState >= 2 means have current data)
+      if (video.readyState < 2) {
+        return
+      }
 
       // Skip kalau video tidak playing
       if (video.paused || video.ended) return
@@ -171,7 +209,7 @@ export function useObjectDetector(): UseObjectDetectorReturn {
         intervalRef.current = null
       }
     }
-  }, [isModelReady])
+  }, [isModelReady, cameraReady])
 
   // ── Helper: konversi bbox normalisasi ke pixel ──────────────────────────
   const bboxToPixel = useCallback(

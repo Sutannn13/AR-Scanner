@@ -4,13 +4,12 @@ import type { ScanStatus } from '../types'
 interface Props {
   status: ScanStatus
   onClick: () => void
-  cooldownSeconds?: number
+  disabled?: boolean
 }
 
-export function ScanButton({ status, onClick }: Props) {
-  // Button is ONLY disabled during active scan/processing
-  // Cooldown NEVER blocks the button — fallback providers handle it
-  const busy = status === 'scanning' || status === 'processing'
+export function ScanButton({ status, onClick, disabled }: Props) {
+  // Button is disabled during active scan/processing OR when camera not ready
+  const busy = status === 'scanning' || status === 'processing' || disabled
 
   return (
     <div className="flex flex-col items-center gap-3">
@@ -104,7 +103,11 @@ export function ScanButton({ status, onClick }: Props) {
       </div>
 
       {/* Helper text */}
-      {!busy && status === 'idle' && (
+      {disabled ? (
+        <p className="font-hud text-[10px] text-yellow-400/50 -mt-1">
+          Izinkan akses kamera terlebih dahulu
+        </p>
+      ) : !busy && status === 'idle' && (
         <p className="font-hud text-[10px] text-hud-cyan/30 -mt-1">
           Arahkan kamera ke objek
         </p>

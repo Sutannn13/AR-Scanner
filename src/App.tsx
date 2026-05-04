@@ -1,20 +1,20 @@
 import { useCallback, useEffect, useRef } from 'react'
-import { AlertCircle, Cpu, Wifi, Timer } from 'lucide-react'
-import { useCamera }    from './hooks/useCamera'
+import { AlertCircle, Cpu, Wifi, Timer, RefreshCw } from 'lucide-react'
+import { useCamera } from './hooks/useCamera'
 import { useObjectDetector } from './hooks/useObjectDetector'
 import { useStableObject } from './hooks/useStableObject'
 import { useScanStore, useARStore } from './store/scanStore'
 import { analyzeImage, onCooldownTick } from './services/geminiService'
-import { CameraView }   from './components/CameraView'
-import { ScanButton }   from './components/ScanButton'
-import { InfoCard }     from './components/InfoCard'
-import { ScanHistory }  from './components/ScanHistory'
+import { CameraView } from './components/CameraView'
+import { ScanButton } from './components/ScanButton'
+import { InfoCard } from './components/InfoCard'
+import { ScanHistory } from './components/ScanHistory'
 import type { DetectionResult, ScanResult } from './types'
 
 export default function App() {
-  const { videoRef, ready, camError, captureFrame } = useCamera()
+  const { videoRef, ready: cameraReady, camError, captureFrame, retryCamera } = useCamera()
 
-  // ── Object Detection (MediaPipe) ──────────────────────────────────────────
+  // ── Object Detection (MediaPipe) - pass camera ready state ──────────────
   const {
     detections,
     isModelReady: isDetectorReady,
@@ -23,7 +23,7 @@ export default function App() {
     videoRef: detectorVideoRef,
     videoWidth,
     videoHeight,
-  } = useObjectDetector()
+  } = useObjectDetector({ cameraReady })
 
   // ── AR Store untuk overlay state ───────────────────────────────────────────
   const {
@@ -144,6 +144,13 @@ export default function App() {
   const handleScan = useCallback(async () => {
     if (status === 'scanning' || status === 'processing') return
 
+    // Block scan if camera is not ready
+    if (!cameraReady) {
+      setError('Kamera belum siap. Izinkan akses kamera dan tunggu preview muncul.')
+      setStatus('error')
+      return
+    }
+
     // No global cooldown block — analyzeImage() handles per-provider skipping
 
     setStatus('scanning')
@@ -163,13 +170,13 @@ export default function App() {
 
     try {
       const result = await analyzeImage(base64)
-      addResult(result)           // also sets status → 'done'
+      addResult(result) // also sets status → 'done'
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       setError(msg)
       setStatus('error')
     }
-  }, [status, captureFrame, setStatus, setError, addResult])
+  }, [status, cameraReady, captureFrame, setStatus, setError, addResult])
 
   const hasAnyKey = !!(
     import.meta.env.VITE_GEMINI_API_KEY?.trim() ||
@@ -177,6 +184,16 @@ export default function App() {
     import.meta.env.VITE_TOGETHER_API_KEY?.trim() ||
     import.meta.env.VITE_HF_API_KEY?.trim()
   )
+
+  // Determine what to show in the status indicator
+  const getCameraStatus = () => {
+    if (camError) return { label: 'NO_SIGNAL', active: false }
+    if (!cameraReady) return { label: 'INIT_CAMERA', active: false }
+    if (!isDetectorReady) return { label: 'CAM_LIVE', active: true }
+    return { label: 'AR_ACTIVE', active: true }
+  }
+
+  const cameraStatus = getCameraStatus()
 
   return (
     <div className="app-shell">
@@ -199,10 +216,10 @@ export default function App() {
 
         {/* Live indicator */}
         <div className="header-status">
-          <span className={`status-dot ${ready ? 'bg-hud-cyan animate-pulse-glow' : 'bg-hud-border'}`} />
-          <Wifi size={12} className={ready ? 'text-hud-cyan' : 'text-hud-border'} />
+          <span className={`status-dot ${cameraStatus.active ? 'bg-hud-cyan animate-pulse-glow' : 'bg-hud-border'}`} />
+          <Wifi size={12} className={cameraStatus.active ? 'text-hud-cyan' : 'text-hud-border'} />
           <span className="status-label">
-            {ready ? 'CAM_LIVE' : 'NO_SIGNAL'}
+            {cameraStatus.label}
           </span>
         </div>
       </header>
@@ -214,7 +231,7 @@ export default function App() {
         <CameraView
           videoRef={detectorVideoRef}
           status={status}
-          ready={ready}
+          ready={cameraReady}
           detections={detections}
           stableObject={stableObject}
           videoWidth={videoWidth}
@@ -222,17 +239,35 @@ export default function App() {
           arOverlay={arOverlay}
         />
 
-        {/* Model Error dari MediaPipe */}
+        {/* Camera initializing message */}
+        {!cameraReady && !camError && (
+          <div className="alert-box alert-info">
+            <RefreshCw size={14} className="text-hud-cyan flex-shrink-0 mt-0.5 animate-spin" />
+            <span className="font-hud text-sm text-hud-cyan">Meminta akses kamera...</span>
+          </div>
+        )}
+
+        {/* Model Error dari MediaPipe - only warning, doesn't block functionality */}
         {modelError && (
           <div className="alert-box alert-warning">
             <AlertCircle size={14} className="text-yellow-400 flex-shrink-0 mt-0.5" />
             <span className="font-hud text-sm text-yellow-400">{modelError}</span>
           </div>
         )}
+
+        {/* Camera Error */}
         {camError && (
           <div className="alert-box alert-error">
             <AlertCircle size={14} className="text-red-400 flex-shrink-0 mt-0.5" />
-            <span className="font-hud text-sm text-red-400">{camError}</span>
+            <div className="flex-1">
+              <span className="font-hud text-sm text-red-400">{camError}</span>
+              <button
+                onClick={retryCamera}
+                className="ml-2 text-xs text-red-300 underline hover:text-red-200"
+              >
+                Coba lagi
+              </button>
+            </div>
           </div>
         )}
 
@@ -277,9 +312,9 @@ export default function App() {
           </div>
         )}
 
-        {/* Scan Button — NEVER blocked by cooldown */}
+        {/* Scan Button — NEVER blocked by cooldown, but blocked if camera not ready */}
         <div className="scan-button-wrapper">
-          <ScanButton status={status} onClick={handleScan} />
+          <ScanButton status={status} onClick={handleScan} disabled={!cameraReady} />
         </div>
 
         {/* Result Card */}
