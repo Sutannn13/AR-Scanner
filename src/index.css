@@ -1635,22 +1635,22 @@ button {
     transform 0.3s ease;
 }
 
-/* LOST state: blurred, faded, amber border */
+/* LOST state: softened blur, still readable */
 .ar-message-lost {
-  opacity: 0.55;
-  filter: blur(1.5px);
-  border-color: rgba(250, 204, 21, 0.5) !important;
+  opacity: 0.8;
+  filter: blur(0.4px);
+  border-color: rgba(250, 204, 21, 0.4) !important;
   box-shadow:
-    0 0 20px rgba(250, 204, 21, 0.1),
-    0 0 40px rgba(250, 204, 21, 0.05),
-    inset 0 0 20px rgba(250, 204, 21, 0.03) !important;
+    0 0 15px rgba(250, 204, 21, 0.08),
+    0 0 30px rgba(250, 204, 21, 0.04),
+    inset 0 0 15px rgba(250, 204, 21, 0.02) !important;
 }
 
-/* UNSTABLE state: slightly faded, amber border */
+/* UNSTABLE state: barely faded, very subtle blur, content still readable */
 .ar-message-unstable {
-  opacity: 0.75;
-  filter: blur(0.5px);
-  border-color: rgba(250, 204, 21, 0.35) !important;
+  opacity: 0.92;
+  filter: blur(0.15px);
+  border-color: rgba(250, 204, 21, 0.25) !important;
 }
 
 /* ── Lost/unstable indicator row ────────────────────────────────── */
@@ -1728,8 +1728,13 @@ button {
   }
 
   .ar-message-lost {
-    opacity: 0.55;
-    filter: blur(1.5px);
+    opacity: 0.8;
+    filter: blur(0.4px);
+  }
+
+  .ar-message-unstable {
+    opacity: 0.92;
+    filter: blur(0.15px);
   }
 
   .ar-message-lost-indicator .ar-message-lost-dot {

@@ -1,25 +1,30 @@
 import type { ScanResult } from '../types'
 
 // ── MULTI-PROVIDER AI SERVICE WITH USAGE TRACKING ─────────────────────────────
-// Fallback chain:
-//   1. Gemini  gemini-2.0-flash-lite         (PRIMARY)
-//   2. Gemini  gemini-2.0-flash             (FALLBACK 1)
-//   3. OpenRouter qwen/qwen3-vl-8b-instruct (FALLBACK 2)
-//   4. OpenRouter google/gemma-3-12b-it:free(FALLBACK 3)
-//   5. Together meta-llama/Llama-Vision-Free (FALLBACK 4)
-//   6. HuggingFace blip-image-captioning-large(FALLBACK 5)
+// Diversified fallback chain (auto mode):
+//   1. Gemini      gemini-2.0-flash-lite          (PRIMARY)
+//   2. OpenRouter  qwen/qwen3-vl-8b-instruct      (FALLBACK 1 — different provider)
+//   3. Together    meta-llama/Llama-Vision-Free   (FALLBACK 2 — different provider)
+//   4. HuggingFace Salesforce/blip-image-caption  (FALLBACK 3)
+//   5. Gemini      gemini-2.0-flash               (FALLBACK 4 — same provider, only after all others)
+//   6. OpenRouter  google/gemma-3-12b-it:free    (FALLBACK 5)
 //
-// COOLDOWN IS PER-PROVIDER:
-//   - One provider's 429 does NOT block any other provider
-//   - Scan button is NEVER blocked by cooldown
+// Provider mode behavior:
+//   - auto:          diversified order, capped by max attempts
+//   - gemini-only:   Gemini flash-lite then Gemini flash
+//   - openrouter-only: OpenRouter qwen then gemma
+//   - together-only: Together only
+//   - hf-only:      HuggingFace only
+//
+// COOLDOWN IS PER-PROVIDER (not per-slot):
+//   - When one slot hits 429, all slots from that provider are skipped
+//     for the rest of this analyzeImage() call.
+//   - Usage is NOT incremented for skipped cooldown providers.
+//   - Scan button is NEVER blocked by cooldown.
 //
 // DAILY USAGE LIMIT:
 //   - Default 25 requests per day, tracked in localStorage
 //   - Real external provider requests only (no Mock AI)
-//
-// PROVIDER MODE:
-//   - auto: fallback chain capped by max attempts
-//   - gemini-only/openrouter-only/together-only/hf-only
 
 // ── Provider types ───────────────────────────────────────────────────────────
 type ProviderName = 'Gemini' | 'OpenRouter' | 'Together' | 'HuggingFace'
@@ -39,7 +44,6 @@ const MAX_PROVIDER_ATTEMPTS = Number(import.meta.env.VITE_MAX_PROVIDER_ATTEMPTS)
 function compressImage(base64: string, maxDim = 768, quality = 0.72): Promise<string> {
   return new Promise((resolve, reject) => {
     try {
-      // Decode base64 to binary
       const binaryString = atob(base64)
       const bytes = new Uint8Array(binaryString.length)
       for (let i = 0; i < binaryString.length; i++) {
@@ -52,7 +56,6 @@ function compressImage(base64: string, maxDim = 768, quality = 0.72): Promise<st
       img.onload = () => {
         URL.revokeObjectURL(url)
 
-        // Calculate target dimensions maintaining aspect ratio
         let { width, height } = img
         if (width > maxDim || height > maxDim) {
           if (width > height) {
@@ -64,7 +67,6 @@ function compressImage(base64: string, maxDim = 768, quality = 0.72): Promise<st
           }
         }
 
-        // Draw compressed version to canvas
         const canvas = document.createElement('canvas')
         canvas.width = width
         canvas.height = height
@@ -90,7 +92,7 @@ function compressImage(base64: string, maxDim = 768, quality = 0.72): Promise<st
 
 // ── Daily API usage tracking ───────────────────────────────────────────────────
 function getTodayKey(): string {
-  const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
+  const today = new Date().toISOString().split('T')[0]
   return `ar_scanner_real_api_usage_${today}`
 }
 
@@ -117,7 +119,6 @@ function incrementTodayUsage(): void {
     const current = getTodayApiUsage()
     localStorage.setItem(key, String(current + 1))
   } catch {
-    // localStorage may be unavailable (private browsing, quota exceeded)
     console.warn('[AR Scanner] Cannot write to localStorage for usage tracking')
   }
 }
@@ -147,7 +148,7 @@ function notifyUsageChange(): void {
   usageListeners.forEach((cb) => cb(usage))
 }
 
-// ── Shared prompt ────────────────────────────────────────────────────────────
+// ── Shared prompt ───────────────────────────────────────────────────────────
 const SYSTEM_PROMPT = `Kamu adalah AR Object Recognition AI yang canggih.
 
 Saat diberikan gambar, analisa dengan teliti dan kembalikan HANYA JSON murni (tanpa markdown, tanpa code block, tanpa penjelasan tambahan).
@@ -175,19 +176,19 @@ Aturan penting:
   const tk = import.meta.env.VITE_TOGETHER_API_KEY
   const hk = import.meta.env.VITE_HF_API_KEY
   const usage = getTodayApiUsage()
-  console.log('[AR Scanner] ═══ Multi-Provider AI Service ═══')
+  console.log('[AR Scanner] ===== Multi-Provider AI Service =====')
   console.log('[AR Scanner]  Provider mode:', PROVIDER_MODE, '| Max attempts:', MAX_PROVIDER_ATTEMPTS)
   console.log('[AR Scanner]  Daily limit:', DAILY_LIMIT, '| Today used:', usage)
-  console.log('[AR Scanner]  1. Gemini gemini-2.0-flash-lite   ', gk ? '✅' : '❌ no key')
-  console.log('[AR Scanner]  2. Gemini gemini-2.0-flash        ', gk ? '✅' : '❌ no key')
-  console.log('[AR Scanner]  3. OpenRouter qwen3-vl-8b          ', ok ? '✅' : '❌ no key')
-  console.log('[AR Scanner]  4. OpenRouter gemma-3-12b-it:free ', ok ? '✅' : '❌ no key')
-  console.log('[AR Scanner]  5. Together Llama-Vision-Free      ', tk ? '✅' : '❌ no key')
-  console.log('[AR Scanner]  6. HuggingFace blip-caption-large ', hk ? '✅' : '❌ no key')
-  console.log('[AR Scanner] ═════════════════════════════════')
+  console.log('[AR Scanner]  1. Gemini gemini-2.0-flash-lite   ', gk ? 'OK' : 'NO KEY')
+  console.log('[AR Scanner]  2. OpenRouter qwen3-vl-8b         ', ok ? 'OK' : 'NO KEY')
+  console.log('[AR Scanner]  3. Together Llama-Vision-Free     ', tk ? 'OK' : 'NO KEY')
+  console.log('[AR Scanner]  4. HuggingFace blip-caption-large  ', hk ? 'OK' : 'NO KEY')
+  console.log('[AR Scanner]  5. Gemini gemini-2.0-flash         ', gk ? 'OK' : 'NO KEY')
+  console.log('[AR Scanner]  6. OpenRouter gemma-3-12b-it:free   ', ok ? 'OK' : 'NO KEY')
+  console.log('[AR Scanner] ===================================')
 })()
 
-// ── PER-PROVIDER cooldown tracking ───────────────────────────────────────────
+// ── PER-PROVIDER cooldown tracking ───────────────────────────────────────
 const providerCooldownUntil: Record<ProviderName, number> = {
   Gemini: 0,
   OpenRouter: 0,
@@ -197,14 +198,14 @@ const providerCooldownUntil: Record<ProviderName, number> = {
 
 function setProviderCooldown(provider: ProviderName, seconds: number) {
   providerCooldownUntil[provider] = Date.now() + seconds * 1000
-  console.log(`[AR Scanner] ⏳ ${provider} cooldown: ${seconds}s`)
+  console.log(`[AI Fallback] ${provider} cooldown: ${seconds}s`)
 }
 
 function isProviderInCooldown(provider: ProviderName): boolean {
   return Date.now() < providerCooldownUntil[provider]
 }
 
-// ── Cooldown UI state (informational only, NEVER blocks scan) ────────────────
+// ── Cooldown UI state (informational only, NEVER blocks scan) ───────────
 const cooldownListeners: Array<(remaining: number) => void> = []
 
 export function onCooldownTick(cb: (remaining: number) => void) {
@@ -228,7 +229,7 @@ function notifyCooldownUI(seconds: number) {
 export function getCooldownRemaining(): number { return 0 }
 export function isCoolingDown(): boolean { return false }
 
-// ── Rate limiter: max 1 request per 2 seconds ────────────────────────────────
+// ── Rate limiter: max 1 request per 2 seconds ───────────────────────────
 let lastRequestTime = 0
 const MIN_REQUEST_INTERVAL = 2000
 
@@ -251,7 +252,7 @@ function parseAIResponse(raw: string): Record<string, unknown> {
   return JSON.parse(cleaned)
 }
 
-// ── Build ScanResult from parsed JSON ────────────────────────────────────────
+// ── Build ScanResult from parsed JSON ──────────────────────────────────────
 function buildResult(
   parsed: Record<string, unknown>,
   base64Jpeg: string,
@@ -273,7 +274,7 @@ function buildResult(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  PROVIDER 1 & 2: GEMINI
+//  PROVIDER 1 & 5: GEMINI (same function, different models)
 // ═══════════════════════════════════════════════════════════════════════════════
 async function callGemini(base64Jpeg: string, model: string): Promise<ScanResult> {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string
@@ -311,24 +312,23 @@ async function callGemini(base64Jpeg: string, model: string): Promise<ScanResult
     const retrySeconds = retryMatch ? parseInt(retryMatch[1], 10) : 30
     setProviderCooldown('Gemini', retrySeconds)
     notifyCooldownUI(retrySeconds)
-    throw new Error(`Gemini ${model} rate limited (429)`)
+    throw new Error(`${model} rate limited (429)`)
   }
 
   if (!response.ok) {
     const errText = await response.text()
-    throw new Error(`Gemini ${model} error ${response.status}: ${errText.slice(0, 200)}`)
+    throw new Error(`${model} error ${response.status}: ${errText.slice(0, 200)}`)
   }
 
   const data = await response.json()
   const text = data?.candidates?.[0]?.content?.parts?.[0]?.text
-  if (!text) throw new Error(`Gemini ${model}: respons kosong`)
+  if (!text) throw new Error(`${model}: respons kosong`)
 
-  const parsed = parseAIResponse(text.trim())
-  return buildResult(parsed, base64Jpeg, 'Gemini', model)
+  return buildResult(parseAIResponse(text.trim()), base64Jpeg, 'Gemini', model)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  PROVIDER 3: OPENROUTER qwen3-vl-8b-instruct (OpenAI-compatible)
+//  PROVIDER 2: OPENROUTER qwen3-vl-8b-instruct
 // ═══════════════════════════════════════════════════════════════════════════════
 async function callOpenRouterQwen(base64Jpeg: string): Promise<ScanResult> {
   const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY as string
@@ -372,24 +372,23 @@ async function callOpenRouterQwen(base64Jpeg: string): Promise<ScanResult> {
 
   if (response.status === 429) {
     setProviderCooldown('OpenRouter', 60)
-    throw new Error('OpenRouter qwen3-vl rate limited (429)')
+    throw new Error('qwen3-vl rate limited (429)')
   }
 
   if (!response.ok) {
     const errText = await response.text()
-    throw new Error(`OpenRouter qwen3-vl error ${response.status}: ${errText.slice(0, 200)}`)
+    throw new Error(`qwen3-vl error ${response.status}: ${errText.slice(0, 200)}`)
   }
 
   const data = await response.json()
   const text = data?.choices?.[0]?.message?.content
-  if (!text) throw new Error('OpenRouter qwen3-vl: respons kosong')
+  if (!text) throw new Error('qwen3-vl: respons kosong')
 
-  const parsed = parseAIResponse(text.trim())
-  return buildResult(parsed, base64Jpeg, 'OpenRouter', model)
+  return buildResult(parseAIResponse(text.trim()), base64Jpeg, 'OpenRouter', model)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  PROVIDER 4: OPENROUTER google/gemma-3-12b-it:free (OpenAI-compatible)
+//  PROVIDER 6: OPENROUTER google/gemma-3-12b-it:free
 // ═══════════════════════════════════════════════════════════════════════════════
 async function callOpenRouterGemma(base64Jpeg: string): Promise<ScanResult> {
   const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY as string
@@ -433,24 +432,23 @@ async function callOpenRouterGemma(base64Jpeg: string): Promise<ScanResult> {
 
   if (response.status === 429) {
     setProviderCooldown('OpenRouter', 60)
-    throw new Error('OpenRouter gemma rate limited (429)')
+    throw new Error('gemma rate limited (429)')
   }
 
   if (!response.ok) {
     const errText = await response.text()
-    throw new Error(`OpenRouter gemma error ${response.status}: ${errText.slice(0, 200)}`)
+    throw new Error(`gemma error ${response.status}: ${errText.slice(0, 200)}`)
   }
 
   const data = await response.json()
   const text = data?.choices?.[0]?.message?.content
-  if (!text) throw new Error('OpenRouter gemma: respons kosong')
+  if (!text) throw new Error('gemma: respons kosong')
 
-  const parsed = parseAIResponse(text.trim())
-  return buildResult(parsed, base64Jpeg, 'OpenRouter', model)
+  return buildResult(parseAIResponse(text.trim()), base64Jpeg, 'OpenRouter', model)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  PROVIDER 5: TOGETHER AI (OpenAI-compatible)
+//  PROVIDER 3: TOGETHER AI
 // ═══════════════════════════════════════════════════════════════════════════════
 async function callTogether(base64Jpeg: string): Promise<ScanResult> {
   const apiKey = import.meta.env.VITE_TOGETHER_API_KEY
@@ -492,7 +490,7 @@ async function callTogether(base64Jpeg: string): Promise<ScanResult> {
 
   if (response.status === 429) {
     setProviderCooldown('Together', 60)
-    throw new Error('Together Llama-Vision rate limited (429)')
+    throw new Error('Llama-Vision rate limited (429)')
   }
 
   if (!response.ok) {
@@ -504,14 +502,11 @@ async function callTogether(base64Jpeg: string): Promise<ScanResult> {
   const text = data?.choices?.[0]?.message?.content
   if (!text) throw new Error('Together: respons kosong')
 
-  const parsed = parseAIResponse(text.trim())
-  return buildResult(parsed, base64Jpeg, 'Together', model)
+  return buildResult(parseAIResponse(text.trim()), base64Jpeg, 'Together', model)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  PROVIDER 6: HUGGING FACE — BLIP image captioning
-//  Returns plain description text, not JSON.
-//  We use the caption to build a structured ScanResult.
+//  PROVIDER 4: HUGGING FACE — BLIP image captioning
 // ═══════════════════════════════════════════════════════════════════════════════
 async function callHuggingFace(base64Jpeg: string): Promise<ScanResult> {
   const apiKey = import.meta.env.VITE_HF_API_KEY
@@ -542,18 +537,16 @@ async function callHuggingFace(base64Jpeg: string): Promise<ScanResult> {
 
   if (response.status === 429) {
     setProviderCooldown('HuggingFace', 60)
-    throw new Error('HuggingFace rate limited (429)')
+    throw new Error('BLIP rate limited (429)')
   }
 
   if (!response.ok) {
     const errText = await response.text()
-    throw new Error(`HuggingFace error ${response.status}: ${errText.slice(0, 200)}`)
+    throw new Error(`BLIP error ${response.status}: ${errText.slice(0, 200)}`)
   }
 
   const caption: string = await response.json()
-
-  const parsed = buildResultFromCaption(caption)
-  return buildResult(parsed, base64Jpeg, 'HuggingFace', 'Salesforce/blip-image-captioning-large')
+  return buildResult(buildResultFromCaption(caption), base64Jpeg, 'HuggingFace', 'Salesforce/blip-image-captioning-large')
 }
 
 // ── Build structured result from a plain caption (no JSON available) ────────
@@ -599,19 +592,18 @@ function buildResultFromCaption(caption: string): Record<string, unknown> {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-//  MAIN: analyzeImage with compression, usage tracking, and provider mode
-// ═══════════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════════════════
+//  MAIN: analyzeImage with diversified fallback, usage tracking, and provider mode
+// ═══════════════════════════════════════════════════════════════════════════════════════
 export async function analyzeImage(rawBase64: string): Promise<ScanResult> {
   // ── Step 1: Check daily limit ───────────────────────────────────────────
   checkDailyLimit()
 
-  // ── Step 2: Compress image (768x768, 0.72 JPEG quality) ─────────────────
+  // ── Step 2: Compress image ───────────────────────────────────────────────
   let base64: string
   try {
     base64 = await compressImage(rawBase64, 768, 0.72)
   } catch {
-    // Fallback: use raw image if compression fails
     console.warn('[AR Scanner] Image compression failed, using original')
     base64 = rawBase64
   }
@@ -625,6 +617,13 @@ export async function analyzeImage(rawBase64: string): Promise<ScanResult> {
     }
   }
 
+  // In auto mode, build DIVERSIFIED order to avoid same-provider clustering:
+  // 1. Gemini flash-lite (primary)
+  // 2. OpenRouter qwen (different provider)
+  // 3. Together Llama-Vision (different provider)
+  // 4. HuggingFace BLIP (different provider)
+  // 5. Gemini flash (fallback, same provider as #1)
+  // 6. OpenRouter gemma (fallback, same provider as #2)
   const allSlots: ModelSlot[] = []
 
   if (mode === 'auto' || mode === 'gemini-only') {
@@ -634,29 +633,21 @@ export async function analyzeImage(rawBase64: string): Promise<ScanResult> {
         model: 'gemini-2.0-flash-lite',
         call: (img) => callGemini(img, 'gemini-2.0-flash-lite'),
       })
-      allSlots.push({
-        provider: 'Gemini',
-        model: 'gemini-2.0-flash',
-        call: (img) => callGemini(img, 'gemini-2.0-flash'),
-      })
-    } else {
+    } else if (mode === 'gemini-only') {
       checkKey('Gemini', import.meta.env.VITE_GEMINI_API_KEY)
     }
   }
 
   if (mode === 'auto' || mode === 'openrouter-only') {
     if (import.meta.env.VITE_OPENROUTER_API_KEY) {
+      // In auto: qwen is slot 2 (after Gemini flash-lite)
+      // In openrouter-only: qwen is slot 1, gemma is slot 2
       allSlots.push({
         provider: 'OpenRouter',
         model: 'qwen/qwen3-vl-8b-instruct',
         call: callOpenRouterQwen,
       })
-      allSlots.push({
-        provider: 'OpenRouter',
-        model: 'google/gemma-3-12b-it:free',
-        call: callOpenRouterGemma,
-      })
-    } else {
+    } else if (mode === 'openrouter-only') {
       checkKey('OpenRouter', import.meta.env.VITE_OPENROUTER_API_KEY)
     }
   }
@@ -668,7 +659,7 @@ export async function analyzeImage(rawBase64: string): Promise<ScanResult> {
         model: 'meta-llama/Llama-Vision-Free',
         call: callTogether,
       })
-    } else {
+    } else if (mode === 'together-only') {
       checkKey('Together', import.meta.env.VITE_TOGETHER_API_KEY)
     }
   }
@@ -680,19 +671,48 @@ export async function analyzeImage(rawBase64: string): Promise<ScanResult> {
         model: 'Salesforce/blip-image-captioning-large',
         call: callHuggingFace,
       })
-    } else {
+    } else if (mode === 'hf-only') {
       checkKey('HuggingFace', import.meta.env.VITE_HF_API_KEY)
     }
   }
 
-  if (allSlots.length === 0) {
-    throw new Error('❌ Tidak ada API key yang dikonfigurasi.\nTambahkan minimal VITE_GEMINI_API_KEY di file .env')
+  // Provider-mode fallbacks (append after already-added slots)
+  if (mode === 'gemini-only') {
+    if (import.meta.env.VITE_GEMINI_API_KEY) {
+      allSlots.push({
+        provider: 'Gemini',
+        model: 'gemini-2.0-flash',
+        call: (img) => callGemini(img, 'gemini-2.0-flash'),
+      })
+    }
   }
 
-  // ── Step 4: Filter out cooldown providers ────────────────────────────────
+  if (mode === 'openrouter-only') {
+    if (import.meta.env.VITE_OPENROUTER_API_KEY) {
+      allSlots.push({
+        provider: 'OpenRouter',
+        model: 'google/gemma-3-12b-it:free',
+        call: callOpenRouterGemma,
+      })
+    }
+  }
+
+  if (allSlots.length === 0) {
+    throw new Error('Tidak ada API key yang dikonfigurasi. Tambahkan minimal satu API key di file .env')
+  }
+
+  // ── Step 4: Log attempt order ───────────────────────────────────────────
+  console.log(
+    '[AI Fallback] attempt order:',
+    allSlots.map((s) => `${s.provider}/${s.model.split('/').pop()}`)
+  )
+
+  // ── Step 5: Filter out cooldown providers ───────────────────────────────
+  // Skip all slots from a provider that is in cooldown.
+  // Usage is NOT incremented for skipped providers.
   const activeSlots = allSlots.filter((slot) => {
     if (isProviderInCooldown(slot.provider)) {
-      console.log(`[AR Scanner] ⏭️ Skipping ${slot.provider} (${slot.model}) — in cooldown`)
+      console.log(`[AI Fallback] skipping provider ${slot.provider} due cooldown`)
       return false
     }
     return true
@@ -700,11 +720,11 @@ export async function analyzeImage(rawBase64: string): Promise<ScanResult> {
 
   const slots = activeSlots.length > 0 ? activeSlots : allSlots
 
-  // ── Step 5: Apply max attempts cap ─────────────────────────────────────
+  // ── Step 6: Apply max attempts cap ───────────────────────────────────────
   const maxAttempts = Math.min(MAX_PROVIDER_ATTEMPTS, slots.length)
   const attemptSlots = slots.slice(0, maxAttempts)
 
-  // ── Step 6: Try each model in order ───────────────────────────────────
+  // ── Step 7: Try each model in order ───────────────────────────────────
   const errors: string[] = []
 
   for (let i = 0; i < attemptSlots.length; i++) {
@@ -712,24 +732,38 @@ export async function analyzeImage(rawBase64: string): Promise<ScanResult> {
     const isLast = i === attemptSlots.length - 1
 
     try {
-      console.log(`[AR Scanner] 🔄 Trying ${slot.provider} → ${slot.model}...`)
+      console.log(`[AI Fallback] trying ${slot.provider}/${slot.model.split('/').pop()}...`)
 
-      // Increment usage BEFORE making the request
+      // Increment usage for ACTUAL attempts only (not skipped providers)
       incrementTodayUsage()
       notifyUsageChange()
-      console.log(`[AR Scanner] 📊 API usage: ${getTodayApiUsage()} / ${DAILY_LIMIT}`)
+      console.log(`[AR Scanner] API usage: ${getTodayApiUsage()} / ${DAILY_LIMIT}`)
 
       const result = await slot.call(base64)
-      console.log(`[AR Scanner] ✅ Success via ${slot.provider} (${slot.model})`)
+      console.log(`[AI Fallback] success via ${slot.provider}`)
       return result
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
-      console.warn(`[AR Scanner] ❌ ${slot.provider} (${slot.model}) failed: ${msg}`)
+      console.warn(`[AI Fallback] ${slot.provider} (${slot.model.split('/').pop()}) failed: ${msg}`)
       errors.push(`${slot.provider}: ${msg}`)
+
+      // ── Part B: Skip all remaining slots from same provider after 429 ──
+      if (msg.includes('rate limited (429)')) {
+        // Mark all remaining slots from this provider as skipped
+        for (let j = i + 1; j < attemptSlots.length; j++) {
+          if (attemptSlots[j].provider === slot.provider) {
+            console.log(`[AI Fallback] skipping provider ${slot.provider} due to 429`)
+            // Mark cooldown so it won't be retried in same call
+            setProviderCooldown(slot.provider, 60)
+          }
+        }
+      }
 
       if (isLast) {
         throw new Error(
-          `❌ Semua model AI gagal.\n\n${errors.map((e, idx) => `${idx + 1}. ${e}`).join('\n')}\n\nCoba lagi dalam beberapa detik.`
+          `AI sedang terkena limit atau provider gagal. ` +
+          `Coba lagi beberapa saat, atau ubah VITE_AI_PROVIDER_MODE ke openrouter-only/auto.\n\n` +
+          `${errors.map((e, idx) => `${idx + 1}. ${e}`).join('\n')}`
         )
       }
 
@@ -737,5 +771,5 @@ export async function analyzeImage(rawBase64: string): Promise<ScanResult> {
     }
   }
 
-  throw new Error('❌ Semua model AI sedang tidak tersedia.')
+  throw new Error('AI tidak tersedia.')
 }

@@ -15,10 +15,10 @@ import type { TrackingState } from './FloatingARLabel'
 import { DetectionBox } from './DetectionBox'
 import { FloatingARLabel } from './FloatingARLabel'
 
-// Tracking health constants
-const IOU_THRESHOLD = 0.25
-const GRACE_BEFORE_UNSTABLE_MS = 500 // Start "unstable" after 500ms of no detection
-const GRACE_PERIOD_MS = 2000 // Clear result after 2000ms of no detection
+// Tracking health constants — tuned to be less aggressive
+const IOU_THRESHOLD = 0.15        // Lowered from 0.25 — accept partial overlap
+const GRACE_BEFORE_UNSTABLE_MS = 1200 // Start "unstable" after 1.2s (was 500ms)
+const GRACE_PERIOD_MS = 3000        // Clear result after 3s (was 2000ms)
 
 /**
  * Calculate IoU between two normalized bounding boxes (0-1 coords).
@@ -37,19 +37,29 @@ function calculateIoU(a: BoundingBox, b: BoundingBox): number {
 }
 
 /**
- * Find a detection matching the tracked label with acceptable IoU.
+ * Check if ANY detection overlaps reasonably with the tracked bbox.
+ * Label may differ between AI result and MediaPipe, so we prioritize bbox overlap.
+ * Returns the best matching detection or null.
  */
 function findMatchingDetection(
   detections: DetectionResult[],
-  trackedLabel: string,
   trackedBbox: BoundingBox
 ): DetectionResult | null {
+  let best: DetectionResult | null = null
+  let bestIoU = 0
+
   for (const det of detections) {
-    if (det.label.toLowerCase() !== trackedLabel.toLowerCase()) continue
+    // Skip low-confidence detections
+    if (det.confidence < 0.4) continue
+
     const iou = calculateIoU(trackedBbox, det.boundingBox)
-    if (iou > IOU_THRESHOLD) return det
+    if (iou > IOU_THRESHOLD && iou > bestIoU) {
+      bestIoU = iou
+      best = det
+    }
   }
-  return null
+
+  return best
 }
 
 interface Props {
@@ -115,46 +125,58 @@ export function CameraView({
   // ── AR Result Tracking State ──────────────────────────────────────────────
   // Track whether the result target is still visible or lost
   const trackedBboxRef = useRef<BoundingBox | null>(null)
-  const trackedLabelRef = useRef<string | null>(null)
   const lastMatchTimeRef = useRef<number>(0)
   const trackingStateRef = useRef<TrackingState>('locked')
   const [trackingState, setTrackingState] = useState<TrackingState>('locked')
+  // Log only when state actually changes — not every frame
+  const lastLoggedStateRef = useRef<TrackingState | null>(null)
 
-  // Update tracked bbox/label when arResult is set
+  // Update tracked bbox when arResult is set
   useEffect(() => {
     if (arResult && arOverlay?.bbox) {
       trackedBboxRef.current = arOverlay.bbox
-      trackedLabelRef.current = arResult.objectName
       lastMatchTimeRef.current = Date.now()
       trackingStateRef.current = 'locked'
       setTrackingState('locked')
+      lastLoggedStateRef.current = 'locked'
     }
   }, [arResult, arOverlay?.bbox])
 
   // Run tracking health check on every detection update
   useEffect(() => {
-    if (!arResult || !trackedBboxRef.current || !trackedLabelRef.current) return
+    if (!arResult || !trackedBboxRef.current) return
 
     const trackedBbox = trackedBboxRef.current
-    const trackedLabel = trackedLabelRef.current
 
-    const match = findMatchingDetection(detections, trackedLabel, trackedBbox)
+    const match = findMatchingDetection(detections, trackedBbox)
     const now = Date.now()
 
     if (match) {
       // Update tracked bbox to latest detection for smooth follow
       trackedBboxRef.current = match.boundingBox
       lastMatchTimeRef.current = now
-      trackingStateRef.current = 'locked'
-      setTrackingState('locked')
+      if (trackingStateRef.current !== 'locked') {
+        trackingStateRef.current = 'locked'
+        setTrackingState('locked')
+        console.log('[Tracking] state: locked')
+        lastLoggedStateRef.current = 'locked'
+      }
     } else {
       const elapsed = now - lastMatchTimeRef.current
       if (elapsed >= GRACE_PERIOD_MS) {
-        trackingStateRef.current = 'lost'
-        setTrackingState('lost')
+        if (trackingStateRef.current !== 'lost') {
+          trackingStateRef.current = 'lost'
+          setTrackingState('lost')
+          console.log('[Tracking] state: lost')
+          lastLoggedStateRef.current = 'lost'
+        }
       } else if (elapsed >= GRACE_BEFORE_UNSTABLE_MS) {
-        trackingStateRef.current = 'unstable'
-        setTrackingState('unstable')
+        if (trackingStateRef.current !== 'unstable') {
+          trackingStateRef.current = 'unstable'
+          setTrackingState('unstable')
+          console.log('[Tracking] state: unstable')
+          lastLoggedStateRef.current = 'unstable'
+        }
       }
       // Else: still locked (grace period not reached)
     }

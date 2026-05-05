@@ -54,7 +54,7 @@ const LERP_FACTOR = 0.15
 
 /**
  * Compute pseudo-3D rotation from normalized bbox position.
- * Max 3deg X, 4deg Y — subtle, not excessive.
+ * Max 2deg X, 3deg Y — subtle, not excessive. Respects prefers-reduced-motion.
  */
 function computePseudo3DRotation(bbox: BoundingBox): { rotateX: number; rotateY: number } {
   const centerX = bbox.originX + bbox.width / 2
@@ -63,8 +63,8 @@ function computePseudo3DRotation(bbox: BoundingBox): { rotateX: number; rotateY:
   const normX = (centerX - 0.5) * 2
   const normY = (centerY - 0.5) * 2
   return {
-    rotateY: normX * 4, // ±4deg max
-    rotateX: -normY * 3, // ±3deg max, negate so top objects tilt away
+    rotateY: normX * 3, // ±3deg max
+    rotateX: -normY * 2, // ±2deg max, negate so top objects tilt away
   }
 }
 
