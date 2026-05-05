@@ -35,15 +35,31 @@ export function FloatingARLabel({
 }: FloatingARLabelProps) {
   const [fadeIn, setFadeIn] = useState(false)
 
+  // Defensive: guard against invalid bbox
+  if (
+    !Number.isFinite(bbox.originX) ||
+    !Number.isFinite(bbox.originY) ||
+    !Number.isFinite(bbox.width) ||
+    !Number.isFinite(bbox.height) ||
+    bbox.width <= 0 ||
+    bbox.height <= 0 ||
+    videoWidth <= 0 ||
+    videoHeight <= 0
+  ) {
+    console.warn('[FloatingARLabel] ⚠️ Invalid bbox skipped:', { bbox, videoWidth, videoHeight })
+    return null;
+  }
+
   // Animasi fade in saat mount
   useEffect(() => {
     const timer = setTimeout(() => setFadeIn(true), 50)
     return () => clearTimeout(timer)
   }, [])
 
+  // Konversi dari normalized (0-1) ke pixel
   // Posisi label: di atas bounding box, centered horizontal
-  const labelX = bbox.originX + bbox.width / 2
-  const labelY = bbox.originY - 60 // 60px di atas bbox
+  const labelX = (bbox.originX + bbox.width / 2) * videoWidth
+  const labelY = bbox.originY * videoHeight - 60 // 60px di atas bbox
 
   const style: React.CSSProperties = {
     position: 'absolute' as const,

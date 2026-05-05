@@ -28,6 +28,7 @@ interface TrackedObject {
   bbox: BoundingBox
   lastSeen: number      // timestamp ms
   stableStart: number   // timestamp ms saat mulai stabil
+  triggeredStable: boolean // apakah onStable sudah dipanggil untuk objek ini
 }
 
 interface UseStableObjectProps {
@@ -125,6 +126,7 @@ export function useStableObject({
           bbox: detection.boundingBox,
           lastSeen: now,
           stableStart: now, // mulai stability timer
+          triggeredStable: false,
         })
       }
     }
@@ -133,6 +135,7 @@ export function useStableObject({
     const toRemove: number[] = []
     for (let i = 0; i < tracked.length; i++) {
       if (now - tracked[i].lastSeen > TRACKING_TIMEOUT_MS) {
+        console.log(`[useStableObject] 🔴 Objek hilang dari tracking: ${tracked[i].label}`)
         toRemove.push(i)
         // Trigger onLost callback
         if (onLost) {
@@ -150,6 +153,9 @@ export function useStableObject({
     let newlyStable: DetectedObject | null = null
 
     for (const obj of tracked) {
+      // Skip jika onStable sudah pernah dipanggil untuk objek ini
+      if (obj.triggeredStable) continue
+
       const stableDuration = now - obj.stableStart
 
       // Hitung progress 0-1
@@ -157,6 +163,11 @@ export function useStableObject({
 
       // Check apakah sudah stabil
       if (stableDuration >= stabilityThresholdMs) {
+        // Mark sebagai triggered agar tidak dipanggil lagi
+        obj.triggeredStable = true
+
+        console.log(`[useStableObject] 🟢 Objek stabil: ${obj.label} (${Math.round(progress * 100)}%)`)
+
         // Return objek dengan confidence tertinggi
         if (!newlyStable || obj.confidence > newlyStable.confidence) {
           newlyStable = {

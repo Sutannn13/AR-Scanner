@@ -9,7 +9,7 @@ import { CameraView } from './components/CameraView'
 import { ScanButton } from './components/ScanButton'
 import { InfoCard } from './components/InfoCard'
 import { ScanHistory } from './components/ScanHistory'
-import type { DetectionResult, ScanResult } from './types'
+import type { DetectedObject } from './types'
 
 export default function App() {
   const { videoRef, ready: cameraReady, camError, captureFrame, retryCamera } = useCamera()
@@ -43,48 +43,11 @@ export default function App() {
   // Refs
   const analysisInProgressRef = useRef(false)
 
-  // ── Stability tracking untuk objek yang terdeteksi ─────────────────────────
-  const { stableObject, updateDetections, resetStability } = useStableObject({
-    // Objek harus stabil selama 3 detik sebelum di-analisis AI
-    stabilityThresholdMs: 3000,
-    // Callback saat objek stabil
-    onStable: (obj) => {
-      console.log(`[AR] 🟢 Objek stabil terdeteksi: ${obj.label} (${Math.round(obj.progress * 100)}%)`)
-
-      // Set tracked label dan mulai AR overlay
-      setTrackedLabel(obj.label)
-      setAROverlay({
-        targetLabel: obj.label,
-        bbox: obj.bbox,
-        result: null, // belum ada hasil AI
-        isAnalyzing: false,
-        showProgress: true,
-      })
-
-      // Trigger analisis AI (hanya kalau belum sedang analisis)
-      if (!analysisInProgressRef.current) {
-        triggerAIRecognition(obj.label)
-      }
-    },
-    // Callback saat objek hilang dari frame
-    onLost: (label) => {
-      console.log(`[AR] 🔴 Objek hilang dari frame: ${label}`)
-      if (trackedLabel === label) {
-        clearAROverlay()
-        analysisInProgressRef.current = false
-      }
-    },
-  })
-
-  // ── Update detections ke stability tracker ─────────────────────────────────
-  useEffect(() => {
-    if (detections.length > 0) {
-      updateDetections(detections)
-    }
-  }, [detections, updateDetections])
-
   // ── Trigger AI recognition untuk objek stabil ──────────────────────────────
-  const triggerAIRecognition = useCallback(async (label: string) => {
+  // Didefinisikan sebelum useStableObject karena useStableObject memakainya
+  const triggerAIRecognition = useCallback(async (obj: DetectedObject) => {
+    const label = obj.label
+
     // Cegah multiple analysis gleichzeitig
     if (analysisInProgressRef.current) return
     analysisInProgressRef.current = true
@@ -92,7 +55,7 @@ export default function App() {
     setIsAIAnalyzing(true)
     setAROverlay({
       targetLabel: label,
-      bbox: stableObject?.bbox ?? { originX: 0, originY: 0, width: 0, height: 0 },
+      bbox: obj.bbox, // gunakan obj.bbox langsung
       result: null,
       isAnalyzing: true,
       showProgress: true,
@@ -106,13 +69,13 @@ export default function App() {
       }
 
       // Panggil AI service
-      console.log(`[AR] 🤖 Memulai analisis AI untuk: ${label}`)
+      console.log(`[App] 🤖 Memulai analisis AI untuk: ${label}`)
       const result = await analyzeImage(base64)
 
       // Update overlay dengan hasil
       setAROverlay({
         targetLabel: label,
-        bbox: stableObject?.bbox ?? { originX: 0, originY: 0, width: 0, height: 0 },
+        bbox: obj.bbox,
         result,
         isAnalyzing: false,
         showProgress: false,
@@ -120,16 +83,58 @@ export default function App() {
 
       // Simpan ke history juga
       addResult(result)
-      console.log(`[AR] ✅ Analisis selesai: ${result.objectName}`)
+      console.log(`[App] ✅ Analisis selesai: ${result.objectName}`)
     } catch (err) {
-      console.error(`[AR] ❌ Analisis gagal:`, err)
+      console.error(`[App] ❌ Analisis gagal:`, err)
       // Reset overlay on error
       clearAROverlay()
     } finally {
       analysisInProgressRef.current = false
       setIsAIAnalyzing(false)
     }
-  }, [captureFrame, addResult, clearAROverlay, setAROverlay, setIsAIAnalyzing, stableObject])
+  }, [captureFrame, addResult, clearAROverlay, setAROverlay, setIsAIAnalyzing])
+
+  // ── Callbacks yang stabil untuk useStableObject ────────────────────────────
+  const handleOnLost = useCallback((label: string) => {
+    console.log(`[App] 🔴 Objek hilang dari frame: ${label}`)
+    if (trackedLabel === label) {
+      clearAROverlay()
+      analysisInProgressRef.current = false
+    }
+  }, [trackedLabel, clearAROverlay])
+
+  const handleOnStable = useCallback((obj: DetectedObject) => {
+    console.log(`[App] 🟢 Objek stabil terdeteksi: ${obj.label} (${Math.round(obj.progress * 100)}%)`)
+
+    // Set tracked label dan mulai AR overlay
+    setTrackedLabel(obj.label)
+    setAROverlay({
+      targetLabel: obj.label,
+      bbox: obj.bbox,
+      result: null, // belum ada hasil AI
+      isAnalyzing: false,
+      showProgress: true,
+    })
+
+    // Trigger analisis AI (hanya kalau belum sedang analisis)
+    if (!analysisInProgressRef.current) {
+      triggerAIRecognition(obj)
+    }
+  }, [setTrackedLabel, setAROverlay, triggerAIRecognition])
+
+  // ── Stability tracking untuk objek yang terdeteksi ─────────────────────────
+  const { stableObject, updateDetections, resetStability } = useStableObject({
+    // Objek harus stabil selama 3 detik sebelum di-analisis AI
+    stabilityThresholdMs: 3000,
+    onStable: handleOnStable,
+    onLost: handleOnLost,
+  })
+
+  // ── Update detections ke stability tracker ─────────────────────────────────
+  // Selalu update, termasuk saat detections kosong, agar onLost/reset bisa bekerja
+  useEffect(() => {
+    updateDetections(detections)
+  }, [detections, updateDetections])
 
   // ── Listen to cooldown ticks (informational only, never blocks scan) ──
   useEffect(() => {

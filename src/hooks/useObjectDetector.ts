@@ -9,9 +9,9 @@
 // 3. Return detection results (label, score, bbox)
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { FilesetResolver, ObjectDetector } from '@mediapipe/tasks-vision'
-import type { DetectionResult, BoundingBox } from '../types'
+import type { DetectionResult } from '../types'
 
 // Interval deteksi: 300ms = ~3 deteksi per detik
 // Tidak terlalu sering (hemat CPU) tapi cukup realtime
@@ -163,17 +163,42 @@ export function useObjectDetector({ cameraReady, videoRef }: UseObjectDetectorPr
         const results = detector.detectForVideo(video, performance.now())
 
         if (results.detections && results.detections.length > 0) {
+          const vw = video.videoWidth || 1
+          const vh = video.videoHeight || 1
+
           // Konversi hasil MediaPipe ke format yang kita pakai
-          const converted: DetectionResult[] = results.detections.map((d) => ({
-            label: d.categories[0]?.categoryName ?? 'unknown',
-            confidence: d.categories[0]?.score ?? 0,
-            boundingBox: {
-              originX: d.boundingBox?.originX ?? 0,
-              originY: d.boundingBox?.originY ?? 0,
-              width: d.boundingBox?.width ?? 0,
-              height: d.boundingBox?.height ?? 0,
-            },
-          }))
+          // MediaPipe returns pixel values - we need to normalize to 0-1
+          const converted: DetectionResult[] = results.detections
+            .filter((d) => {
+              // Filter out invalid detections
+              const rawBbox = d.boundingBox
+              if (!rawBbox) return false
+              const w = rawBbox.width ?? 0
+              const h = rawBbox.height ?? 0
+              return w > 0 && h > 0
+            })
+            .map((d) => {
+              const raw = d.boundingBox!
+              // Normalize to 0-1 range
+              const originX = Math.max(0, Math.min(1, raw.originX / vw))
+              const originY = Math.max(0, Math.min(1, raw.originY / vh))
+              const width = Math.max(0, Math.min(1, raw.width / vw))
+              const height = Math.max(0, Math.min(1, raw.height / vh))
+
+              return {
+                label: d.categories[0]?.categoryName ?? 'unknown',
+                confidence: d.categories[0]?.score ?? 0,
+                boundingBox: { originX, originY, width, height },
+              }
+            })
+
+          console.log(
+            `[useObjectDetector] 📍 Deteksi: ${converted.length} objek, video: ${vw}x${vh}`,
+            converted.map((d) => ({
+              label: d.label,
+              bbox: d.boundingBox,
+            }))
+          )
 
           // Sort: confidence tertinggi di depan
           converted.sort((a, b) => b.confidence - a.confidence)
@@ -181,13 +206,8 @@ export function useObjectDetector({ cameraReady, videoRef }: UseObjectDetectorPr
           lastDetectionRef.current = converted
           setDetections(converted)
 
-          // Update video dimensions untuk konversi bbox ke pixel
-          if (video.videoWidth && video.videoHeight) {
-            setVideoDimensions({
-              width: video.videoWidth,
-              height: video.videoHeight,
-            })
-          }
+          // Update video dimensions
+          setVideoDimensions({ width: vw, height: vh })
         } else {
           lastDetectionRef.current = []
           setDetections([])
@@ -210,19 +230,7 @@ export function useObjectDetector({ cameraReady, videoRef }: UseObjectDetectorPr
     }
   }, [isModelReady, cameraReady])
 
-  // ── Helper: konversi bbox normalisasi ke pixel ──────────────────────────
-  const bboxToPixel = useCallback(
-    (bbox: BoundingBox): BoundingBox => {
-      return {
-        originX: bbox.originX * videoDimensions.width,
-        originY: bbox.originY * videoDimensions.height,
-        width: bbox.width * videoDimensions.width,
-        height: bbox.height * videoDimensions.height,
-      }
-    },
-    [videoDimensions]
-  )
-
+  
   return {
     detections,
     isModelReady,

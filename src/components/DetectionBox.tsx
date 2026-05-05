@@ -3,7 +3,7 @@
 // Render bounding box dan progress bar untuk objek yang terdeteksi.
 //
 // Props:
-// - bbox: bounding box dalam koordinat pixel (absolute)
+// - bbox: bounding box normalized (0-1)
 // - label: nama objek yang terdeteksi
 // - confidence: score deteksi (0-1)
 // - progress: progress stabilitas (0-1), null kalau belum ada
@@ -39,13 +39,27 @@ export function DetectionBox({
   videoWidth,
   videoHeight,
 }: DetectionBoxProps) {
+  // Defensive: guard against invalid bbox
+  if (
+    !Number.isFinite(bbox.originX) ||
+    !Number.isFinite(bbox.originY) ||
+    !Number.isFinite(bbox.width) ||
+    !Number.isFinite(bbox.height) ||
+    bbox.width <= 0 ||
+    bbox.height <= 0 ||
+    videoWidth <= 0 ||
+    videoHeight <= 0
+  ) {
+    console.warn('[DetectionBox] ⚠️ Invalid bbox skipped:', { bbox, videoWidth, videoHeight })
+    return null;
+  }
+
   // Konversi dari normalized (0-1) ke pixel
-  // bbox.originX dan originY sudah dalam pixel dari useObjectDetector
   const style: React.CSSProperties = {
-    left: `${bbox.originX}px`,
-    top: `${bbox.originY}px`,
-    width: `${bbox.width}px`,
-    height: `${bbox.height}px`,
+    left: `${bbox.originX * videoWidth}px`,
+    top: `${bbox.originY * videoHeight}px`,
+    width: `${bbox.width * videoWidth}px`,
+    height: `${bbox.height * videoHeight}px`,
   }
 
   const borderColor = confidenceToColor(confidence)

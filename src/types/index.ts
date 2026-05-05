@@ -9,12 +9,14 @@ export type ScanStatus = 'idle' | 'scanning' | 'processing' | 'done' | 'error' |
 // DETEKSI OBJEK (dari MediaPipe)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Bounding box dalam koordinat normalisasi (0–1) */
+/** Bounding box dalam koordinat normalisasi (0–1).
+ *  Ini adalah range relatif terhadap dimensi video.
+ *  CameraView akan mengkonversi ke pixel saat rendering. */
 export interface BoundingBox {
-  originX: number      // x origin (0–1)
-  originY: number      // y origin (0–1)
-  width: number        // lebar (0–1)
-  height: number       // tinggi (0–1)
+  originX: number      // x origin (0–1), normalized
+  originY: number      // y origin (0–1), normalized
+  width: number        // lebar (0–1), normalized
+  height: number       // tinggi (0–1), normalized
 }
 
 export interface DetectionResult {
@@ -30,7 +32,7 @@ export interface DetectionResult {
 export interface DetectedObject {
   label: string
   confidence: number
-  bbox: BoundingBox                    // bbox pixel (absolute)
+  bbox: BoundingBox                    // bbox normalized 0-1
   stableStartTime: number              // timestamp saat stabil dimulai (ms)
   stableDuration: number              // durasi stabil dalam ms
   progress: number                    // 0–1, progress ke threshold
@@ -45,7 +47,7 @@ export type StabilityCallback = (obj: DetectedObject) => void
 export interface AROverlay {
   // Objek yang sedang di-display
   targetLabel: string
-  bbox: BoundingBox                    // bbox pixel untuk positioning
+  bbox: BoundingBox                    // bbox normalized 0-1
   // Hasil AI (null kalau belum analysis selesai)
   result: ScanResult | null
   isAnalyzing: boolean
