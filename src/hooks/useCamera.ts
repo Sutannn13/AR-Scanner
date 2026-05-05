@@ -77,79 +77,95 @@ export function useCamera(): UseCameraReturn {
     streamRef.current = stream
     console.log('[useCamera] ✅ Stream diterima!', stream.getTracks().map(t => `${t.kind}:${t.label}`).join(', '))
 
-    const video = videoRef.current
-    if (!video) {
-      cleanupStream()
-      return
-    }
+    // Retry attaching stream if videoRef is temporarily null
+    const maxRetries = 10
+    let attachAttempts = 0
 
-    video.srcObject = stream
-    video.setAttribute('playsinline', '')
-    video.setAttribute('muted', '')
-
-    // Use multiple events to ensure video is truly ready
-    const handleCanPlay = async () => {
-      if (attempt !== initAttemptRef.current) return
-
-      console.log('[useCamera] loadedmetadata event fired')
-      console.log(`[useCamera] video.readyState: ${video.readyState}`)
-      console.log(`[useCamera] videoWidth: ${video.videoWidth}, videoHeight: ${video.videoHeight}`)
-
-      try {
-        console.log('[useCamera] Calling video.play()...')
-        await video.play()
-        console.log('[useCamera] ✅ video.play() berhasil!')
-
-        // Only set ready when video has real dimensions
-        if (video.videoWidth > 0 && video.videoHeight > 0) {
-          console.log(`[useCamera] ✅ Kamera siap! Resolution: ${video.videoWidth}x${video.videoHeight}`)
-          setReady(true)
+    const tryAttachStream = () => {
+      const video = videoRef.current
+      if (!video) {
+        attachAttempts++
+        if (attachAttempts < maxRetries) {
+          console.warn(`[useCamera] ⚠️ videoRef.current masih null, retry #${attachAttempts} dalam 100ms...`)
+          setTimeout(tryAttachStream, 100)
         } else {
-          console.warn('[useCamera] ⚠️ video.play() berhasil tapi dimensi masih 0, menunggu...')
-          // Wait for actual dimensions
-          video.onloadeddata = null
-          video.oncanplay = null
-          video.onplaying = () => {
-            if (attempt === initAttemptRef.current && video.videoWidth > 0 && video.videoHeight > 0) {
-              console.log(`[useCamera] ✅ Kamera siap (from playing event)! Resolution: ${video.videoWidth}x${video.videoHeight}`)
-              setReady(true)
+          console.error('[useCamera] ❌ videoRef.current masih null setelah 10 percobaan. Pastikan CameraView memakai videoRef dari useCamera.')
+          cleanupStream()
+        }
+        return
+      }
+
+      video.srcObject = stream
+      video.muted = true
+      video.playsInline = true
+      video.autoplay = true
+
+      // Use multiple events to ensure video is truly ready
+      const handleCanPlay = async () => {
+        if (attempt !== initAttemptRef.current) return
+
+        console.log('[useCamera] loadedmetadata event fired')
+        console.log(`[useCamera] video.readyState: ${video.readyState}`)
+        console.log(`[useCamera] videoWidth: ${video.videoWidth}, videoHeight: ${video.videoHeight}`)
+
+        try {
+          console.log('[useCamera] Calling video.play()...')
+          await video.play()
+          console.log('[useCamera] ✅ video.play() berhasil!')
+
+          // Only set ready when video has real dimensions
+          if (video.videoWidth > 0 && video.videoHeight > 0) {
+            console.log(`[useCamera] ✅ Kamera siap! Resolution: ${video.videoWidth}x${video.videoHeight}`)
+            setReady(true)
+          } else {
+            console.warn('[useCamera] ⚠️ video.play() berhasil tapi dimensi masih 0, menunggu...')
+            // Wait for actual dimensions
+            video.onloadeddata = null
+            video.oncanplay = null
+            video.onplaying = () => {
+              if (attempt === initAttemptRef.current && video.videoWidth > 0 && video.videoHeight > 0) {
+                console.log(`[useCamera] ✅ Kamera siap (from playing event)! Resolution: ${video.videoWidth}x${video.videoHeight}`)
+                setReady(true)
+              }
             }
           }
+        } catch (playErr) {
+          console.error('[useCamera] ❌ video.play() gagal:', playErr)
+          if (attempt === initAttemptRef.current) {
+            setCamError('Gagal memulai video. Pastikan tidak ada aplikasi lain yang menggunakan kamera.')
+          }
         }
-      } catch (playErr) {
-        console.error('[useCamera] ❌ video.play() gagal:', playErr)
+      }
+
+      video.onloadedmetadata = handleCanPlay
+      video.onloadeddata = () => {
         if (attempt === initAttemptRef.current) {
-          setCamError('Gagal memulai video. Pastikan tidak ada aplikasi lain yang menggunakan kamera.')
+          console.log('[useCamera] loadeddata event fired')
+        }
+      }
+      video.oncanplay = () => {
+        if (attempt === initAttemptRef.current) {
+          console.log('[useCamera] canplay event fired')
+        }
+      }
+      video.onplaying = () => {
+        if (attempt === initAttemptRef.current) {
+          console.log('[useCamera] playing event fired')
+          if (video.videoWidth > 0 && video.videoHeight > 0) {
+            console.log(`[useCamera] ✅ Kamera siap (playing event)! Resolution: ${video.videoWidth}x${video.videoHeight}`)
+            setReady(true)
+          }
+        }
+      }
+      video.onerror = () => {
+        console.error('[useCamera] ❌ Video element error:', video.error)
+        if (attempt === initAttemptRef.current) {
+          setCamError(`Video error: ${video.error?.message ?? 'Unknown error'}`)
         }
       }
     }
 
-    video.onloadedmetadata = handleCanPlay
-    video.onloadeddata = () => {
-      if (attempt === initAttemptRef.current) {
-        console.log('[useCamera] loadeddata event fired')
-      }
-    }
-    video.oncanplay = () => {
-      if (attempt === initAttemptRef.current) {
-        console.log('[useCamera] canplay event fired')
-      }
-    }
-    video.onplaying = () => {
-      if (attempt === initAttemptRef.current) {
-        console.log('[useCamera] playing event fired')
-        if (video.videoWidth > 0 && video.videoHeight > 0) {
-          console.log(`[useCamera] ✅ Kamera siap (playing event)! Resolution: ${video.videoWidth}x${video.videoHeight}`)
-          setReady(true)
-        }
-      }
-    }
-    video.onerror = () => {
-      console.error('[useCamera] ❌ Video element error:', video.error)
-      if (attempt === initAttemptRef.current) {
-        setCamError(`Video error: ${video.error?.message ?? 'Unknown error'}`)
-      }
-    }
+    tryAttachStream()
   }, [cleanupStream])
 
   useEffect(() => {

@@ -20,10 +20,9 @@ export default function App() {
     isModelReady: isDetectorReady,
     isDetecting,
     modelError,
-    videoRef: detectorVideoRef,
     videoWidth,
     videoHeight,
-  } = useObjectDetector({ cameraReady })
+  } = useObjectDetector({ cameraReady, videoRef })
 
   // ── AR Store untuk overlay state ───────────────────────────────────────────
   const {
@@ -229,7 +228,7 @@ export default function App() {
 
         {/* Camera View with AR overlays */}
         <CameraView
-          videoRef={detectorVideoRef}
+          videoRef={videoRef}
           status={status}
           ready={cameraReady}
           detections={detections}

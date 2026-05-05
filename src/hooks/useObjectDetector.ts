@@ -29,6 +29,7 @@ const MODEL_CONFIG = {
 
 interface UseObjectDetectorProps {
   cameraReady: boolean
+  videoRef: React.RefObject<HTMLVideoElement>
 }
 
 interface UseObjectDetectorReturn {
@@ -36,12 +37,11 @@ interface UseObjectDetectorReturn {
   isModelReady: boolean
   isDetecting: boolean
   modelError: string | null
-  videoRef: React.RefObject<HTMLVideoElement>
   videoWidth: number
   videoHeight: number
 }
 
-export function useObjectDetector({ cameraReady }: UseObjectDetectorProps): UseObjectDetectorReturn {
+export function useObjectDetector({ cameraReady, videoRef }: UseObjectDetectorProps): UseObjectDetectorReturn {
   const [detections, setDetections] = useState<DetectionResult[]>([])
   const [isModelReady, setIsModelReady] = useState(false)
   const [isDetecting, setIsDetecting] = useState(false)
@@ -49,7 +49,6 @@ export function useObjectDetector({ cameraReady }: UseObjectDetectorProps): UseO
   const [videoDimensions, setVideoDimensions] = useState({ width: 0, height: 0 })
 
   // Refs untuk menyimpan state yang tidak trigger re-render
-  const videoRef = useRef<HTMLVideoElement>(null)
   const detectorRef = useRef<ObjectDetector | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const lastDetectionRef = useRef<DetectionResult[]>([])
@@ -229,7 +228,6 @@ export function useObjectDetector({ cameraReady }: UseObjectDetectorProps): UseO
     isModelReady,
     isDetecting,
     modelError,
-    videoRef,
     videoWidth: videoDimensions.width,
     videoHeight: videoDimensions.height,
   }
