@@ -161,6 +161,94 @@ ar-scanner/
 
 ---
 
+## 🔭 Konsep Project: Computer Vision-based Monitor AR
+
+AR Scanner adalah aplikasi web berbasis **Computer Vision-based Monitor AR** yang menggunakan kamera real-time untuk mendeteksi objek dunia nyata. Setelah objek stabil selama 3 detik, sistem mengirim frame kamera ke AI Vision untuk menghasilkan deskripsi objek. Hasil analisis ditampilkan sebagai kotak pesan virtual/AR bubble di atas tampilan kamera.
+
+### Mengapa Ini Termasuk AR?
+
+AR (Augmented Reality) tidak harus menggunakan model 3D lengkap atau marker khusus. Cukup memenuhi prinsip dasar:
+
+1. **Lingkungan kamera real-time** — pengguna melihat dunia nyata lewat webcam
+2. **Overlay informasi virtual** — hasil AI muncul sebagai floating bubble di atas feed
+3. **Interaksi realtime** — bubble bergerak mengikuti posisi objek (smooth follow)
+4. **Object tracking** — MediaPipe melacak posisi objek frame-demi-frame
+5. **AR berbasis monitor/smartphone** — menggunakan layar HP/laptop sebagai "jendela AR"
+
+### Relation to VAR Material
+
+**Computer Vision-based AR:**
+- MediaPipe ObjectDetector mengenali objek secara visual
+- Bounding box ditampilkan sebagai overlay di atas objek nyata
+
+**Monitor Based AR:**
+- Kamera acts sebagai "window" ke dunia nyata
+- Informasi virtual (label AI) overlaid di atas feed kamera
+- User melihat kombinasi real + virtual dalam satu tampilan
+
+**AR Control Flow (well-known model):**
+```
+Display (Kamera/Layar) → Registration/Tracking (MediaPipe bbox) → Interaction (AI + bubble)
+```
+
+> **Catatan:** Overlay informasi 2D virtual tetap valid sebagai AR, tidak harus full 3D model. Contoh: HUD di game mobil adalah AR. Glass HUD di kaca mata pintar adalah AR. AR Scanner menggunakan prinsip yang sama — virtual info overlay di real environment.
+
+### Tech Stack
+
+| Layer              | Teknologi                                           |
+|--------------------|-----------------------------------------------------|
+| Framework          | React 18 + TypeScript + Vite                        |
+| Styling            | Tailwind CSS v3 (HUD/Cyberpunk theme)               |
+| State Management   | Zustand                                             |
+| Kamera             | WebRTC (browser-native)                             |
+| Object Detection   | MediaPipe Tasks Vision (EfficientDet-Lite0)        |
+| AI Engine          | Multi-Provider: Gemini, OpenRouter, Together, HF    |
+| Deployment         | Vercel (static hosting)                             |
+
+### AI Provider Chain (Auto Mode, max 2 attempts)
+
+```
+1. Gemini gemini-2.0-flash-lite     (Primary — fastest, cheapest)
+2. OpenRouter qwen3-vl-8b-instruct  (Fallback 1 — different provider)
+3. Together Llama-Vision-Free       (Fallback 2)
+4. HuggingFace BLIP                 (Fallback 3)
+5. Gemini gemini-2.0-flash          (Fallback 4)
+6. OpenRouter gemma-3-12b-it:free   (Fallback 5)
+```
+
+Dengan `VITE_MAX_PROVIDER_ATTEMPTS=2`: attempt pertama = Gemini flash-lite, attempt kedua = OpenRouter qwen. Ketika satu provider 429, semua slot dari provider tersebut diskip dalam satu call.
+
+### Demo Instructions
+
+1. Buka aplikasi di browser (Chrome/Firefox, gunakan localhost atau HTTPS)
+2. Izinkan akses kamera
+3. Gunakan objek yang jelas: **telepon,杯子, botol, buku, laptop**
+4. Pastikan **pencahayaan cukup**
+5. Arahkan objek ke kamera dan **tahan 3 detik**
+6. AI akan mengenali dan menampilkan hasil
+7. Tekan **SCAN AGAIN** untuk objek lain
+8. Jika AI gagal (429 rate limit): ubah provider mode ke OpenRouter/Auto
+
+### API Protection
+
+- **Daily limit**: 25 request real API per hari (tracked via localStorage)
+- **Provider cooldown**: 429 dari satu provider tidak memblokir scan button
+- **Diversified fallback**: max attempts 2 mencoba provider berbeda
+- **Usage counter**: menampilkan `API hari ini X / 25` di header
+
+> **Peringatan:** API keys bersifat frontend-exposed (di file .env). Untuk demo lanjutan, gunakan key berbeda atau rotasi secara berkala. Jangan deploy dengan key produksi.
+
+### AR Overlay Behavior
+
+- **Analyzing state**: floating label mengikuti bbox objek (anchor mode)
+- **Result ready**: message bubble muncul di dalam kamera (inside-camera mode)
+- **Tracking lost**: bubble blur + opacity turun, tetap terlihat
+- **Smooth follow**: lerp interpolation memastikan bubble tidak "lompat"
+- **Pseudo-3D tilt**: rotateX ±2°, rotateY ±3° berdasarkan posisi objek (subtle)
+- **One-time reveal**: animasi fade-in hanya jalan sekali saat result pertama muncul
+
+---
+
 ## 🎓 Relevansi dengan Materi VAR
 
 | Konsep VAR                  | Implementasi dalam Project                 |

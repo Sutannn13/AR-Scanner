@@ -1618,10 +1618,13 @@ button {
 /* Fade / hide states for transition */
 .ar-message-hidden {
   opacity: 0;
+  animation: none !important;
 }
 
 .ar-message-visible {
   opacity: 1;
+  /* Reveal animation runs exactly once when this class is added */
+  animation: ar-message-reveal 0.35s ease-out forwards;
 }
 
 /* ── AR Result Lock — tracking state visuals ─────────────────────────────────── */
@@ -1715,26 +1718,11 @@ button {
   z-index: 0;
 }
 
-/* ── Message box reveal animation ─────────────────────────────────── */
-.ar-message-box {
-  animation: ar-message-reveal 0.35s ease-out forwards;
-}
-
 /* Reduced motion: skip reveal animation */
 @media (prefers-reduced-motion: reduce) {
-  .ar-message-box {
+  .ar-message-visible {
     animation: none;
     opacity: 1;
-  }
-
-  .ar-message-lost {
-    opacity: 0.8;
-    filter: blur(0.4px);
-  }
-
-  .ar-message-unstable {
-    opacity: 0.92;
-    filter: blur(0.15px);
   }
 
   .ar-message-lost-indicator .ar-message-lost-dot {

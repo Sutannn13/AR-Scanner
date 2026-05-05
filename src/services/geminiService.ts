@@ -592,9 +592,9 @@ function buildResultFromCaption(caption: string): Record<string, unknown> {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════════
 //  MAIN: analyzeImage with diversified fallback, usage tracking, and provider mode
-// ═══════════════════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════════
 export async function analyzeImage(rawBase64: string): Promise<ScanResult> {
   // ── Step 1: Check daily limit ───────────────────────────────────────────
   checkDailyLimit()
@@ -624,6 +624,17 @@ export async function analyzeImage(rawBase64: string): Promise<ScanResult> {
   // 4. HuggingFace BLIP (different provider)
   // 5. Gemini flash (fallback, same provider as #1)
   // 6. OpenRouter gemma (fallback, same provider as #2)
+  //
+  // With VITE_MAX_PROVIDER_ATTEMPTS=2:
+  //   Attempt 1 = Gemini flash-lite
+  //   Attempt 2 = OpenRouter qwen
+  //   NOT Gemini flash-lite + Gemini flash
+  //
+  // Provider cooldown:
+  //   - When one slot hits 429, all slots from that provider are skipped
+  //     for the rest of this analyzeImage() call.
+  //   - Usage is NOT incremented for skipped cooldown providers.
+  //   - Scan button is NEVER blocked by cooldown.
   const allSlots: ModelSlot[] = []
 
   if (mode === 'auto' || mode === 'gemini-only') {
@@ -640,8 +651,6 @@ export async function analyzeImage(rawBase64: string): Promise<ScanResult> {
 
   if (mode === 'auto' || mode === 'openrouter-only') {
     if (import.meta.env.VITE_OPENROUTER_API_KEY) {
-      // In auto: qwen is slot 2 (after Gemini flash-lite)
-      // In openrouter-only: qwen is slot 1, gemma is slot 2
       allSlots.push({
         provider: 'OpenRouter',
         model: 'qwen/qwen3-vl-8b-instruct',
@@ -710,7 +719,7 @@ export async function analyzeImage(rawBase64: string): Promise<ScanResult> {
   // ── Step 5: Filter out cooldown providers ───────────────────────────────
   // Skip all slots from a provider that is in cooldown.
   // Usage is NOT incremented for skipped providers.
-  const activeSlots = allSlots.filter((slot) => {
+  let activeSlots = allSlots.filter((slot) => {
     if (isProviderInCooldown(slot.provider)) {
       console.log(`[AI Fallback] skipping provider ${slot.provider} due cooldown`)
       return false
@@ -718,11 +727,13 @@ export async function analyzeImage(rawBase64: string): Promise<ScanResult> {
     return true
   })
 
-  const slots = activeSlots.length > 0 ? activeSlots : allSlots
+  if (activeSlots.length === 0) {
+    activeSlots = allSlots
+  }
 
   // ── Step 6: Apply max attempts cap ───────────────────────────────────────
-  const maxAttempts = Math.min(MAX_PROVIDER_ATTEMPTS, slots.length)
-  const attemptSlots = slots.slice(0, maxAttempts)
+  const maxAttempts = Math.min(MAX_PROVIDER_ATTEMPTS, activeSlots.length)
+  const attemptSlots = activeSlots.slice(0, maxAttempts)
 
   // ── Step 7: Try each model in order ───────────────────────────────────
   const errors: string[] = []
@@ -734,12 +745,14 @@ export async function analyzeImage(rawBase64: string): Promise<ScanResult> {
     try {
       console.log(`[AI Fallback] trying ${slot.provider}/${slot.model.split('/').pop()}...`)
 
-      // Increment usage for ACTUAL attempts only (not skipped providers)
+      // Make the actual API call FIRST
+      const result = await slot.call(base64)
+
+      // Only increment usage after a successful response
       incrementTodayUsage()
       notifyUsageChange()
       console.log(`[AR Scanner] API usage: ${getTodayApiUsage()} / ${DAILY_LIMIT}`)
 
-      const result = await slot.call(base64)
       console.log(`[AI Fallback] success via ${slot.provider}`)
       return result
     } catch (err) {
@@ -748,12 +761,16 @@ export async function analyzeImage(rawBase64: string): Promise<ScanResult> {
       errors.push(`${slot.provider}: ${msg}`)
 
       // ── Part B: Skip all remaining slots from same provider after 429 ──
+      // The cooldown was already set by the call function (callGemini, callOpenRouterQwen, etc.)
+      // via setProviderCooldown(). Here we mark remaining slots so they are skipped in this call.
       if (msg.includes('rate limited (429)')) {
-        // Mark all remaining slots from this provider as skipped
+        // Log for user visibility
+        console.log(`[AI Fallback] ${slot.provider} 429 rate limited — skipping remaining ${slot.provider} slots in this call`)
+        // Mark all remaining slots from this provider as skipped for this call
         for (let j = i + 1; j < attemptSlots.length; j++) {
           if (attemptSlots[j].provider === slot.provider) {
-            console.log(`[AI Fallback] skipping provider ${slot.provider} due to 429`)
-            // Mark cooldown so it won't be retried in same call
+            // Set cooldown so isProviderInCooldown() returns true
+            // This ensures the same provider is skipped even if we re-check
             setProviderCooldown(slot.provider, 60)
           }
         }
@@ -761,9 +778,8 @@ export async function analyzeImage(rawBase64: string): Promise<ScanResult> {
 
       if (isLast) {
         throw new Error(
-          `AI sedang terkena limit atau provider gagal. ` +
-          `Coba lagi beberapa saat, atau ubah VITE_AI_PROVIDER_MODE ke openrouter-only/auto.\n\n` +
-          `${errors.map((e, idx) => `${idx + 1}. ${e}`).join('\n')}`
+          `AI sedang terkena limit atau provider gagal. Coba lagi beberapa saat, atau ubah provider mode ke OpenRouter/Auto.\n\n` +
+          `Error:\n${errors.map((e, idx) => `  ${idx + 1}. ${e}`).join('\n')}`
         )
       }
 
