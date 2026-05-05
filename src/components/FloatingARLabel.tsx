@@ -16,8 +16,13 @@ interface FloatingARLabelProps {
   bbox: { originX: number; originY: number; width: number; height: number }
   videoWidth: number
   videoHeight: number
-  /** 'anchor' = mengikuti bbox, 'center' = panel tengah viewport (untuk hasil akhir) */
-  mode?: 'anchor' | 'center'
+  /**
+   * Display mode:
+   * - 'anchor': floating label above detected bbox (for analyzing phase)
+   * - 'center': large centered panel covering the object (DEPRECATED — use 'message')
+   * - 'message': compact message box / chat bubble, does NOT cover the object
+   */
+  mode?: 'anchor' | 'center' | 'message'
 }
 
 export function FloatingARLabel({
@@ -32,8 +37,8 @@ export function FloatingARLabel({
 }: FloatingARLabelProps) {
   const [fadeIn, setFadeIn] = useState(false)
 
-  // Tentukan mode: jika ada result, default ke center; sonst anchor
-  const activeMode = mode ?? (result ? 'center' : 'anchor')
+  // Tentukan mode: jika ada result, default ke message (non-intrusive); sonst anchor
+  const activeMode = mode ?? (result ? 'message' : 'anchor')
 
   // Guard: hanya anchor mode yang butuh valid bbox
   if (activeMode === 'anchor') {
@@ -82,7 +87,72 @@ export function FloatingARLabel({
   const confidencePercent = Math.round(confidence * 100)
 
   // ── Render result panel (mode center) ───────────────────────────────────────
-  if (result) {
+  if (result && activeMode === 'message') {
+    // ── MESSAGE MODE: compact chat bubble, does NOT cover the object ──
+    const confidencePercent = Math.round(confidence * 100)
+    return (
+      <div
+        className={`
+          ar-message-box
+          ${fadeIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'}
+        `}
+      >
+        {/* Connector line from camera object to message box */}
+        <div className="ar-message-connector" />
+
+        <div className="ar-message-content">
+          {/* ── Header row: badge + object name ── */}
+          <div className="ar-message-header">
+            <span className="ar-message-badge">AI OBJECT INFO</span>
+            <span className="ar-message-title">{result.objectName}</span>
+            {category && (
+              <span className="ar-message-category">{category}</span>
+            )}
+          </div>
+
+          {/* ── Description ── */}
+          {description && (
+            <p className="ar-message-description">
+              {description.trim() || 'Deskripsi tidak tersedia.'}
+            </p>
+          )}
+
+          {/* ── Fun fact (max 1) ── */}
+          {funFacts && funFacts.length > 0 && (
+            <div className="ar-message-fact">
+              <span className="ar-message-fact-bullet">▸</span>
+              <span className="ar-message-fact-text">{funFacts[0]}</span>
+            </div>
+          )}
+
+          {/* ── Footer row: confidence + provider + hint ── */}
+          <div className="ar-message-footer">
+            <div className="ar-message-confidence">
+              <span className="ar-message-conf-label">CONF</span>
+              <div className="ar-message-conf-track">
+                <div
+                  className="ar-message-conf-fill"
+                  style={{ width: `${confidencePercent}%` }}
+                />
+              </div>
+              <span className="ar-message-conf-value">{confidencePercent}%</span>
+            </div>
+            {result.providerUsed && (
+              <span className="ar-message-provider">{result.providerUsed}</span>
+            )}
+          </div>
+
+          {/* ── Hint ── */}
+          <div className="ar-message-hint">
+            Tekan SCAN AGAIN untuk objek lain
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Render result panel (mode center — DEPRECATED, kept for compat) ──────────
+  if (result && activeMode === 'center') {
     return (
       <div
         className={`

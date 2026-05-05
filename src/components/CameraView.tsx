@@ -103,8 +103,7 @@ export function CameraView({
       <div className="absolute inset-0 camera-grid opacity-40 pointer-events-none" />
 
       {/* ── AR Detection Overlays: DetectionBox tetap pakai bbox pixel ── */}
-      {(isScanArmed || arResult) &&
-        detections.map((detection, idx) => {
+      {(isScanArmed || arResult) && detections.map((detection, idx) => {
           const isThisStable = stableObject?.label === detection.label
 
           // DetectionBox butuh bbox pixel, jadi di sini memang dikonversi.
@@ -129,20 +128,16 @@ export function CameraView({
         })}
 
       {/*
-        ── Floating AR Label: hasil AI akhir (mode center, tidak mengikuti bbox) ──
-        mode="center" → panel di tengah viewport, stabil, readable
+        ── Small info badge inside camera when AR result is ready ──
+        Does NOT cover the object — just a subtle indicator.
       */}
-      {arResult && (
-        <FloatingARLabel
-          label={arResult.objectName}
-          confidence={arResult.confidence}
-          isAnalyzing={false}
-          result={arResult}
-          bbox={{ originX: 0.5, originY: 0.5, width: 0.1, height: 0.1 }}
-          videoWidth={videoWidth || 1}
-          videoHeight={videoHeight || 1}
-          mode="center"
-        />
+      {arResult && !arOverlay?.isAnalyzing && (
+        <div className="camera-info-ready-badge">
+          <span className="w-1.5 h-1.5 bg-hud-cyan rounded-full animate-pulse" />
+          <span className="font-mono-tech text-[9px] text-hud-cyan tracking-widest">
+            OBJECT LOCKED
+          </span>
+        </div>
       )}
 
       {/*

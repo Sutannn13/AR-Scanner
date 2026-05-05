@@ -909,6 +909,7 @@ button {
   height: 20px;
   border: 1px solid rgba(0,255,213,0.5);
   background: rgba(0,255,213,0.1);
+  -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
 }
 
@@ -1247,12 +1248,276 @@ button {
    RESPONSIVE - Adjust floating label for mobile
    ═══════════════════════════════════════════════════════════════════════ */
 
+/* ═══════════════════════════════════════════════════════════════════════
+   AR MESSAGE BOX — compact chat bubble that does NOT cover the object
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.ar-message-box {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  margin-top: 8px;
+  z-index: 50;
+  pointer-events: none;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+/* Connector line from camera area to message box */
+.ar-message-connector {
+  display: none; /* Hidden by default — shown on desktop via CSS */
+}
+
+/* Main message content container */
+.ar-message-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(2, 8, 14, 0.92);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 255, 213, 0.4);
+  box-shadow:
+    0 0 20px rgba(0, 255, 213, 0.15),
+    0 0 40px rgba(0, 255, 213, 0.08),
+    inset 0 0 20px rgba(0, 255, 213, 0.03);
+}
+
+/* Subtle top accent line */
+.ar-message-content::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 16px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(0, 255, 213, 0.5) 30%,
+    rgba(0, 255, 213, 0.5) 70%,
+    transparent
+  );
+}
+
+/* ── Header row ── */
+.ar-message-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.ar-message-badge {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  color: var(--hud-cyan);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(0, 255, 213, 0.12);
+  border: 1px solid rgba(0, 255, 213, 0.35);
+  white-space: nowrap;
+}
+
+.ar-message-title {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 15px;
+  color: #ffffff;
+  letter-spacing: 0.04em;
+  text-shadow:
+    0 0 8px rgba(0, 255, 213, 0.5),
+    0 0 16px rgba(0, 255, 213, 0.25);
+}
+
+.ar-message-category {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  color: #c084fc;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(123, 47, 255, 0.2);
+  border: 1px solid rgba(123, 47, 255, 0.4);
+}
+
+/* ── Description ── */
+.ar-message-description {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #d4f0e8;
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(0, 255, 213, 0.05);
+  border: 1px solid rgba(0, 255, 213, 0.12);
+}
+
+/* ── Fun fact ── */
+.ar-message-fact {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(123, 47, 255, 0.08);
+  border: 1px solid rgba(123, 47, 255, 0.2);
+}
+
+.ar-message-fact-bullet {
+  font-size: 10px;
+  color: rgba(123, 47, 255, 0.7);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.ar-message-fact-text {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #e8d4f0;
+}
+
+/* ── Footer row ── */
+.ar-message-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ar-message-confidence {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 120px;
+}
+
+.ar-message-conf-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px;
+  color: rgba(0, 255, 213, 0.5);
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+
+.ar-message-conf-track {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(0, 255, 213, 0.1);
+  overflow: hidden;
+  border: 1px solid rgba(0, 255, 213, 0.2);
+}
+
+.ar-message-conf-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, rgba(0, 255, 213, 0.6), rgba(0, 255, 213, 0.9));
+  box-shadow: 0 0 6px rgba(0, 255, 213, 0.4);
+  transition: width 0.5s ease;
+}
+
+.ar-message-conf-value {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  color: rgba(0, 255, 213, 0.8);
+  min-width: 30px;
+  text-align: right;
+}
+
+.ar-message-provider {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(0, 255, 213, 0.08);
+  border: 1px solid rgba(0, 255, 213, 0.2);
+  color: rgba(0, 255, 213, 0.5);
+  letter-spacing: 0.08em;
+}
+
+/* ── Hint ── */
+.ar-message-hint {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 10px;
+  color: rgba(123, 47, 255, 0.7);
+  text-align: center;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: rgba(123, 47, 255, 0.06);
+  border: 1px solid rgba(123, 47, 255, 0.15);
+  letter-spacing: 0.04em;
+}
+
+/* ── Camera info ready badge (inside camera) ── */
+.camera-info-ready-badge {
+  position: absolute;
+  top: 40px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(0, 255, 213, 0.15);
+  border: 1px solid rgba(0, 255, 213, 0.35);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  animation: slide-up 0.4s ease-out forwards;
+  z-index: 40;
+}
+
+/* ── Responsive message box ── */
 @media (max-width: 480px) {
-  .hologram-card { padding: 8px 12px; }
-  .hologram-cube { width: 20px; height: 20px; }
-  .cube-face { width: 16px; height: 16px; }
-  .cube-top { transform: rotateX(90deg) translateZ(8px); }
-  .cube-front { transform: translateZ(8px); }
-  .cube-right { transform: rotateY(90deg) translateZ(8px); }
-  .cube-left { transform: rotateY(-90deg) translateZ(8px); }
+  .ar-message-content {
+    padding: 10px 12px;
+    gap: 6px;
+    border-radius: 10px;
+  }
+
+  .ar-message-title {
+    font-size: 14px;
+  }
+
+  .ar-message-description {
+    font-size: 12px;
+    padding: 5px 8px;
+  }
+
+  .ar-message-fact-text {
+    font-size: 11px;
+  }
+
+  .ar-message-hint {
+    font-size: 9px;
+  }
+}
+
+/* ── Desktop: show connector line ── */
+@media (min-width: 768px) {
+  .ar-message-connector {
+    display: block;
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 1px;
+    height: 20px;
+    background: linear-gradient(
+      180deg,
+      transparent,
+      rgba(0, 255, 213, 0.4)
+    );
+  }
+
+  .ar-message-box {
+    max-width: 420px;
+  }
 }
