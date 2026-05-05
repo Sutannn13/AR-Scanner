@@ -3,7 +3,7 @@ import { AlertCircle, Cpu, Wifi, Timer, RefreshCw } from 'lucide-react'
 import { useCamera } from './hooks/useCamera'
 import { useObjectDetector } from './hooks/useObjectDetector'
 import { useStableObject } from './hooks/useStableObject'
-import { useScanStore, useARStore } from './store/scanStore'
+import { useScanStore, useARStore, useARSessionStore } from './store/scanStore'
 import { analyzeImage, onCooldownTick } from './services/geminiService'
 import { CameraView } from './components/CameraView'
 import { ScanButton } from './components/ScanButton'
@@ -11,20 +11,24 @@ import { InfoCard } from './components/InfoCard'
 import { ScanHistory } from './components/ScanHistory'
 import type { DetectedObject } from './types'
 
+// ─────────────────────────────────────────────────────────────────────────────
+// AR Button Status - derived from AR session state
+// ─────────────────────────────────────────────────────────────────────────────
+export type ARButtonStatus = 'idle' | 'armed' | 'waiting' | 'analyzing' | 'done' | 'error'
+
 export default function App() {
   const { videoRef, ready: cameraReady, camError, captureFrame, retryCamera } = useCamera()
 
-  // ── Object Detection (MediaPipe) - pass camera ready state ──────────────
+  // ── Object Detection (MediaPipe) ───────────────────────────────────────────
   const {
     detections,
     isModelReady: isDetectorReady,
-    isDetecting,
     modelError,
     videoWidth,
     videoHeight,
   } = useObjectDetector({ cameraReady, videoRef })
 
-  // ── AR Store untuk overlay state ───────────────────────────────────────────
+  // ── Stores ───────────────────────────────────────────────────────────────────
   const {
     arOverlay,
     isAIAnalyzing,
@@ -40,39 +44,65 @@ export default function App() {
     setStatus, setError, addResult, setCurrent, setCooldown,
   } = useScanStore()
 
-  // Refs
+  const {
+    isScanArmed,
+    hasAnalyzedCurrentTarget,
+    isARActive,
+    arResult,
+    startARScanSession,
+    finishARScanSession,
+    resetARScanSession,
+    markTargetAnalyzed,
+    setARResult,
+    clearARResult,
+  } = useARSessionStore()
+
+  // ── Refs ───────────────────────────────────────────────────────────────────────
   const analysisInProgressRef = useRef(false)
+  const stableProgressRef = useRef<number>(0)
 
-  // ── Trigger AI recognition untuk objek stabil ──────────────────────────────
-  // Didefinisikan sebelum useStableObject karena useStableObject memakainya
+  // ── AR Button Status ────────────────────────────────────────────────────────
+  const getARButtonStatus = (): ARButtonStatus => {
+    if (isAIAnalyzing) return 'analyzing'
+    if (isScanArmed && !hasAnalyzedCurrentTarget) return 'waiting'
+    if (isARActive && !isScanArmed && arResult) return 'done'
+    if (status === 'error') return 'error'
+    return 'idle'
+  }
+
+  const arButtonStatus = getARButtonStatus()
+
+  // ── Trigger AI Recognition (AR session) ───────────────────────────────────
+  // Defined before useStableObject so its ref can be passed to callbacks
   const triggerAIRecognition = useCallback(async (obj: DetectedObject) => {
-    const label = obj.label
-
-    // Cegah multiple analysis gleichzeitig
     if (analysisInProgressRef.current) return
     analysisInProgressRef.current = true
 
+    const label = obj.label
+    console.log(`[AR Session] 🤖 AI called once for: ${label}`)
+
     setIsAIAnalyzing(true)
+    setTrackedLabel(label)
     setAROverlay({
       targetLabel: label,
-      bbox: obj.bbox, // gunakan obj.bbox langsung
+      bbox: obj.bbox,
       result: null,
       isAnalyzing: true,
-      showProgress: true,
+      showProgress: false,
     })
 
     try {
-      // Capture frame dari video
       const base64 = captureFrame()
       if (!base64) {
         throw new Error('Gagal mengambil gambar dari kamera')
       }
 
-      // Panggil AI service
-      console.log(`[App] 🤖 Memulai analisis AI untuk: ${label}`)
       const result = await analyzeImage(base64)
 
-      // Update overlay dengan hasil
+      // Store result in AR session store (NOT in history automatically)
+      setARResult(result)
+
+      // Update overlay with result
       setAROverlay({
         targetLabel: label,
         bbox: obj.bbox,
@@ -81,62 +111,143 @@ export default function App() {
         showProgress: false,
       })
 
-      // Simpan ke history juga
-      addResult(result)
-      console.log(`[App] ✅ Analisis selesai: ${result.objectName}`)
+      console.log(`[AR Session] ✅ Result displayed: ${result.objectName}`)
+      finishARScanSession()
     } catch (err) {
-      console.error(`[App] ❌ Analisis gagal:`, err)
-      // Reset overlay on error
+      console.error(`[AR Session] ❌ Analysis failed:`, err)
       clearAROverlay()
+      clearARResult()
+      resetARScanSession()
     } finally {
       analysisInProgressRef.current = false
       setIsAIAnalyzing(false)
     }
-  }, [captureFrame, addResult, clearAROverlay, setAROverlay, setIsAIAnalyzing])
+  }, [
+    captureFrame,
+    setARResult,
+    setAROverlay,
+    setTrackedLabel,
+    setIsAIAnalyzing,
+    clearAROverlay,
+    clearARResult,
+    finishARScanSession,
+    resetARScanSession,
+  ])
 
-  // ── Callbacks yang stabil untuk useStableObject ────────────────────────────
+  // Ref to triggerAIRecognition for use in callbacks
+  const triggerAIRecognitionRef = useRef(triggerAIRecognition)
+  useEffect(() => {
+    triggerAIRecognitionRef.current = triggerAIRecognition
+  }, [triggerAIRecognition])
+
+  // ── Stability tracking - AR session aware ──────────────────────────────────
   const handleOnLost = useCallback((label: string) => {
-    console.log(`[App] 🔴 Objek hilang dari frame: ${label}`)
+    console.log(`[AR Session] 🔴 Target lost: ${label}`)
+
     if (trackedLabel === label) {
       clearAROverlay()
+      clearARResult()
       analysisInProgressRef.current = false
+
+      // If session was armed, mark session as done (user must scan again)
+      if (isScanArmed) {
+        finishARScanSession()
+      }
     }
-  }, [trackedLabel, clearAROverlay])
+  }, [trackedLabel, clearAROverlay, clearARResult, isScanArmed, finishARScanSession])
 
   const handleOnStable = useCallback((obj: DetectedObject) => {
-    console.log(`[App] 🟢 Objek stabil terdeteksi: ${obj.label} (${Math.round(obj.progress * 100)}%)`)
-
-    // Set tracked label dan mulai AR overlay
-    setTrackedLabel(obj.label)
-    setAROverlay({
-      targetLabel: obj.label,
-      bbox: obj.bbox,
-      result: null, // belum ada hasil AI
-      isAnalyzing: false,
-      showProgress: true,
-    })
-
-    // Trigger analisis AI (hanya kalau belum sedang analisis)
-    if (!analysisInProgressRef.current) {
-      triggerAIRecognition(obj)
+    // ONLY trigger if AR session is armed and hasn't analyzed yet
+    if (!isScanArmed) {
+      console.log(`[AR Session] ⏸️ Object stable but session not armed, ignoring`)
+      return
     }
-  }, [setTrackedLabel, setAROverlay, triggerAIRecognition])
 
-  // ── Stability tracking untuk objek yang terdeteksi ─────────────────────────
+    if (hasAnalyzedCurrentTarget) {
+      console.log(`[AR Session] ⏸️ Current target already analyzed, ignoring`)
+      return
+    }
+
+    if (analysisInProgressRef.current) {
+      console.log(`[AR Session] ⏸️ Analysis already in progress, ignoring`)
+      return
+    }
+
+    console.log(`[AR Session] 🟢 Stable target found: ${obj.label}`)
+
+    // Mark as analyzed BEFORE calling AI to prevent duplicate calls
+    const targetKey = `${obj.label}_${Math.round(obj.bbox.originX * 100)}_${Math.round(obj.bbox.originY * 100)}`
+    markTargetAnalyzed(targetKey)
+
+    // Call via ref to avoid circular dependency
+    triggerAIRecognitionRef.current(obj)
+  }, [isScanArmed, hasAnalyzedCurrentTarget, markTargetAnalyzed])
+
   const { stableObject, updateDetections, resetStability } = useStableObject({
-    // Objek harus stabil selama 3 detik sebelum di-analisis AI
     stabilityThresholdMs: 3000,
     onStable: handleOnStable,
     onLost: handleOnLost,
   })
 
-  // ── Update detections ke stability tracker ─────────────────────────────────
-  // Selalu update, termasuk saat detections kosong, agar onLost/reset bisa bekerja
+  // Track progress for UI feedback
+  useEffect(() => {
+    if (isScanArmed && stableObject) {
+      stableProgressRef.current = stableObject.progress
+    }
+  }, [isScanArmed, stableObject])
+
+  // ── Update detections (always, for onLost to work) ────────────────────────
   useEffect(() => {
     updateDetections(detections)
   }, [detections, updateDetections])
 
-  // ── Listen to cooldown ticks (informational only, never blocks scan) ──
+  // ── Start AR Scan Session ───────────────────────────────────────────────────
+  const handleStartARScan = useCallback(() => {
+    console.log('[AR Session] 🔵 User pressed START AR SCAN')
+
+    // Clear previous results
+    clearAROverlay()
+    clearARResult()
+    resetStability()
+    analysisInProgressRef.current = false
+    stableProgressRef.current = 0
+
+    // Start the AR session
+    startARScanSession()
+  }, [clearAROverlay, clearARResult, resetStability, startARScanSession])
+
+  // ── Reset to idle / start new session ──────────────────────────────────────
+  const handleResetARScan = useCallback(() => {
+    console.log('[AR Session] 🔄 User pressed SCAN AGAIN')
+
+    clearAROverlay()
+    clearARResult()
+    resetStability()
+    analysisInProgressRef.current = false
+    stableProgressRef.current = 0
+
+    resetARScanSession()
+  }, [clearAROverlay, clearARResult, resetStability, resetARScanSession])
+
+  // ── Main button handler ────────────────────────────────────────────────────
+  const handleScanButtonClick = useCallback(() => {
+    switch (arButtonStatus) {
+      case 'idle':
+      case 'error':
+        handleStartARScan()
+        break
+      case 'done':
+        handleResetARScan()
+        break
+      case 'armed':
+      case 'waiting':
+      case 'analyzing':
+        // Do nothing while session is active
+        break
+    }
+  }, [arButtonStatus, handleStartARScan, handleResetARScan])
+
+  // ── Listen to cooldown ticks ──────────────────────────────────────────────
   useEffect(() => {
     const unsub = onCooldownTick((remaining) => {
       setCooldown(remaining)
@@ -144,44 +255,17 @@ export default function App() {
     return unsub
   }, [setCooldown])
 
-  // ── Main scan handler ────────────────────────────────────────────
-  const handleScan = useCallback(async () => {
-    if (status === 'scanning' || status === 'processing') return
+  // ── Camera status ───────────────────────────────────────────────────────────
+  const getCameraStatus = () => {
+    if (camError) return { label: 'NO_SIGNAL', active: false }
+    if (!cameraReady) return { label: 'INIT_CAMERA', active: false }
+    if (!isDetectorReady) return { label: 'CAM_LIVE', active: true }
+    return { label: 'AR_READY', active: true }
+  }
 
-    // Block scan if camera is not ready
-    if (!cameraReady) {
-      setError('Kamera belum siap. Izinkan akses kamera dan tunggu preview muncul.')
-      setStatus('error')
-      return
-    }
+  const cameraStatus = getCameraStatus()
 
-    // No global cooldown block — analyzeImage() handles per-provider skipping
-
-    setStatus('scanning')
-    setError(null)
-
-    // Let scan animation play for a moment
-    await new Promise((r) => setTimeout(r, 1800))
-
-    const base64 = captureFrame()
-    if (!base64) {
-      setError('Gagal mengambil gambar dari kamera.')
-      setStatus('error')
-      return
-    }
-
-    setStatus('processing')
-
-    try {
-      const result = await analyzeImage(base64)
-      addResult(result) // also sets status → 'done'
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      setError(msg)
-      setStatus('error')
-    }
-  }, [status, cameraReady, captureFrame, setStatus, setError, addResult])
-
+  // ── API Key check ───────────────────────────────────────────────────────────
   const hasAnyKey = !!(
     import.meta.env.VITE_GEMINI_API_KEY?.trim() ||
     import.meta.env.VITE_OPENROUTER_API_KEY?.trim() ||
@@ -189,15 +273,15 @@ export default function App() {
     import.meta.env.VITE_HF_API_KEY?.trim()
   )
 
-  // Determine what to show in the status indicator
-  const getCameraStatus = () => {
-    if (camError) return { label: 'NO_SIGNAL', active: false }
-    if (!cameraReady) return { label: 'INIT_CAMERA', active: false }
-    if (!isDetectorReady) return { label: 'CAM_LIVE', active: true }
-    return { label: 'AR_ACTIVE', active: true }
+  // ── Instruction text based on session state ────────────────────────────────
+  const getInstructionText = (): string | null => {
+    if (arButtonStatus === 'waiting') return 'Arahkan kamera ke objek dan tahan 3 detik'
+    if (arButtonStatus === 'analyzing') return 'Menganalisis objek...'
+    if (arButtonStatus === 'done') return 'Objek terdeteksi! Arahkan ke objek lain atau tekan SCAN AGAIN'
+    return null
   }
 
-  const cameraStatus = getCameraStatus()
+  const instructionText = getInstructionText()
 
   return (
     <div className="app-shell">
@@ -214,7 +298,7 @@ export default function App() {
             AR_SCANNER
           </h1>
           <p className="header-subtitle">
-            POWERED BY GEMINI AI · TUGAS VAR · UBSI
+            REALTIME CV · TUGAS VAR · UBSI
           </p>
         </div>
 
@@ -241,6 +325,8 @@ export default function App() {
           videoWidth={videoWidth}
           videoHeight={videoHeight}
           arOverlay={arOverlay}
+          isScanArmed={isScanArmed}
+          arResult={arResult}
         />
 
         {/* Camera initializing message */}
@@ -251,7 +337,7 @@ export default function App() {
           </div>
         )}
 
-        {/* Model Error dari MediaPipe - only warning, doesn't block functionality */}
+        {/* Model Error from MediaPipe */}
         {modelError && (
           <div className="alert-box alert-warning">
             <AlertCircle size={14} className="text-yellow-400 flex-shrink-0 mt-0.5" />
@@ -290,7 +376,6 @@ export default function App() {
         )}
 
         {/* Cooldown Timer */}
-        {/* Gemini cooldown info (non-blocking — scanning still works via fallbacks) */}
         {cooldownSeconds > 0 && (
           <div className="cooldown-banner">
             <Timer size={16} className="text-yellow-400 flex-shrink-0" />
@@ -299,7 +384,7 @@ export default function App() {
                 Gemini cooldown: {cooldownSeconds}s
               </span>
               <span className="cooldown-sub">
-                Menggunakan provider cadangan (Groq / OpenRouter). Kamu tetap bisa scan!
+                Menggunakan provider cadangan. Tetap bisa scan!
               </span>
               <div className="cooldown-bar-track">
                 <div className="cooldown-bar-fill" style={{ animationDuration: `${cooldownSeconds}s` }} />
@@ -308,31 +393,37 @@ export default function App() {
           </div>
         )}
 
-        {/* Error from scan */}
-        {error && status === 'error' && (
-          <div className="alert-box alert-error">
-            <AlertCircle size={14} className="text-red-400 flex-shrink-0 mt-0.5" />
-            <span className="font-hud text-sm text-red-400 whitespace-pre-line">{error}</span>
+        {/* AR Instruction Banner */}
+        {instructionText && (
+          <div className="ar-instruction-banner">
+            <span className="ar-instruction-text">{instructionText}</span>
           </div>
         )}
 
-        {/* Scan Button — NEVER blocked by cooldown, but blocked if camera not ready */}
+        {/* Scan Button - AR session aware */}
         <div className="scan-button-wrapper">
-          <ScanButton status={status} onClick={handleScan} disabled={!cameraReady} />
+          <ScanButton
+            arButtonStatus={arButtonStatus}
+            onClick={handleScanButtonClick}
+            disabled={!cameraReady}
+          />
         </div>
 
-        {/* Result Card */}
+        {/* Result Card - only for manual scans */}
         {current && (
           <InfoCard result={current} onClose={() => setCurrent(null)} />
         )}
 
-        {/* History */}
-        <ScanHistory history={history} />
+        {/* Scan History - hidden during active AR session */}
+        <ScanHistory
+          history={history}
+          hidden={isARActive && !arResult}
+        />
 
         {/* Footer */}
         <footer className="app-footer">
           <p className="font-mono-tech footer-text">
-            VAR · UBSI · {new Date().getFullYear()} · AR OBJECT SCANNER
+            VAR · UBSI · {new Date().getFullYear()} · REALTIME CV AR
           </p>
         </footer>
       </main>

@@ -1,19 +1,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPONENT CameraView
 // Viewport utama untuk camera feed dengan AR overlay.
-//
-// Props:
-// - videoRef: ref ke video element
-// - status: status scan
-// - ready: apakah camera ready
-// - detections: hasil deteksi objek (optional, untuk AR overlay)
-// - stableObject: objek yang sudah stabil (optional)
-// - onDetectionsChange: callback saat detections berubah
-// - videoWidth/videoHeight: dimensi video untuk positioning overlay
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useEffect } from 'react'
-import type { ScanStatus, DetectionResult, DetectedObject, BoundingBox } from '../types'
+import type { ScanStatus, DetectionResult, DetectedObject, BoundingBox, ScanResult } from '../types'
 import { DetectionBox } from './DetectionBox'
 import { FloatingARLabel } from './FloatingARLabel'
 
@@ -21,14 +12,15 @@ interface Props {
   videoRef: React.RefObject<HTMLVideoElement>
   status: ScanStatus
   ready: boolean
-  // Props untuk AR overlay
   detections?: DetectionResult[]
   stableObject?: DetectedObject | null
   onDetectionsChange?: (detections: DetectionResult[]) => void
   videoWidth?: number
   videoHeight?: number
-  // AR overlay dari store
   arOverlay?: { targetLabel: string; bbox: BoundingBox; result: any; isAnalyzing: boolean } | null
+  // AR session props
+  isScanArmed?: boolean
+  arResult?: ScanResult | null
 }
 
 const STATUS_LABEL: Record<ScanStatus, string> = {
@@ -64,6 +56,8 @@ export function CameraView({
   videoWidth = 0,
   videoHeight = 0,
   arOverlay = null,
+  isScanArmed = false,
+  arResult = null,
 }: Props) {
   const isActive = status === 'scanning'
   const isProcessing = status === 'processing'
@@ -80,6 +74,7 @@ export function CameraView({
       className={`
         camera-container
         ${isActive ? 'scanning camera-active' : 'camera-idle'}
+        ${isScanArmed ? 'ar-armed' : ''}
       `}
     >
       {/* ── Video Feed ── */}
@@ -95,8 +90,8 @@ export function CameraView({
       <div className="absolute inset-0 camera-grid opacity-40 pointer-events-none" />
 
       {/* ── AR Detection Overlays (bounding boxes + labels) ── */}
-      {/* Loop through detections dan render bounding boxes */}
-      {detections.map((detection, idx) => {
+      {/* Always show detections when armed OR when we have a result */}
+      {(isScanArmed || arResult) && detections.map((detection, idx) => {
         const isThisStable = stableObject?.label === detection.label
         const pixelBbox = normalizeBboxToPixel(
           detection.boundingBox,
@@ -117,13 +112,30 @@ export function CameraView({
         )
       })}
 
-      {/* ── Floating AR Label untuk objek stabil ── */}
-      {stableObject && (
+      {/* ── Floating AR Label untuk objek stabil dengan hasil AI ── */}
+      {arResult && stableObject && (
         <FloatingARLabel
           label={stableObject.label}
           confidence={stableObject.confidence}
-          isAnalyzing={arOverlay?.isAnalyzing ?? false}
-          result={arOverlay?.result ?? null}
+          isAnalyzing={false}
+          result={arResult}
+          bbox={normalizeBboxToPixel(
+            stableObject.bbox,
+            videoWidth || 1,
+            videoHeight || 1
+          )}
+          videoWidth={videoWidth || 1}
+          videoHeight={videoHeight || 1}
+        />
+      )}
+
+      {/* ── Analyzing overlay ── */}
+      {arOverlay?.isAnalyzing && stableObject && (
+        <FloatingARLabel
+          label={stableObject.label}
+          confidence={stableObject.confidence}
+          isAnalyzing={true}
+          result={null}
           bbox={normalizeBboxToPixel(
             stableObject.bbox,
             videoWidth || 1,
@@ -230,7 +242,7 @@ export function CameraView({
       {/* ── HUD: top-left label ── */}
       <div className="absolute top-3 left-3 pointer-events-none">
         <span className="font-mono-tech text-[9px] text-hud-cyan/50 tracking-widest">
-          AR_SCAN_v2.0 · UBSI
+          AR_CV · UBSI
         </span>
       </div>
 
@@ -241,13 +253,26 @@ export function CameraView({
             status === 'error' ? 'bg-red-400 animate-pulse' :
             isActive ? 'bg-hud-cyan animate-pulse-bright' :
             isProcessing ? 'bg-hud-purple animate-pulse' :
+            isScanArmed ? 'bg-hud-cyan animate-pulse-bright' :
             'bg-hud-cyan/40'
           }`}
         />
         <span className="font-mono-tech text-[9px] text-hud-cyan/50 tracking-widest">
-          {STATUS_LABEL[status]}
+          {isScanArmed ? 'AR_ACTIVE' : STATUS_LABEL[status]}
         </span>
       </div>
+
+      {/* ── AR Session active indicator ── */}
+      {isScanArmed && (
+        <div className="absolute bottom-3 left-3 pointer-events-none animate-slide-up">
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-hud-cyan/20 border border-hud-cyan/30">
+            <span className="w-1.5 h-1.5 bg-hud-cyan rounded-full animate-pulse" />
+            <span className="font-mono-tech text-[9px] text-hud-cyan tracking-widest">
+              AR SESSION
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* ── Category badge (shown when done) ── */}
       {status === 'done' && (

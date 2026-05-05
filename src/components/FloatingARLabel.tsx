@@ -1,14 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPONENT FloatingARLabel
-// Floating label yang muncul saat objek terdeteksi.
-// Berbeda dengan DetectionBox yang show bounding box,
-// FloatingARLabel hanya show label dengan animasi floating.
-//
-// Props:
-// - label: nama objek
-// - confidence: score deteksi
-// - isAnalyzing: apakah sedang di-scan oleh AI
-// - result: hasil scan dari AI (null kalau belum selesai)
+// Floating label yang muncul saat objek terdeteksi dengan hasil AI.
+// Termasuk CSS-only pseudo-3D hologram/cube/icon effect.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useEffect, useState } from 'react'
@@ -47,7 +40,7 @@ export function FloatingARLabel({
     videoHeight <= 0
   ) {
     console.warn('[FloatingARLabel] ⚠️ Invalid bbox skipped:', { bbox, videoWidth, videoHeight })
-    return null;
+    return null
   }
 
   // Animasi fade in saat mount
@@ -57,66 +50,90 @@ export function FloatingARLabel({
   }, [])
 
   // Konversi dari normalized (0-1) ke pixel
-  // Posisi label: di atas bounding box, centered horizontal
   const labelX = (bbox.originX + bbox.width / 2) * videoWidth
-  const labelY = bbox.originY * videoHeight - 60 // 60px di atas bbox
+  const labelY = bbox.originY * videoHeight - 80 // 80px di atas bbox
 
-  const style: React.CSSProperties = {
-    position: 'absolute' as const,
-    left: `${labelX}px`,
-    top: `${labelY}px`,
-    transform: 'translateX(-50%)',
-  }
+  // Clamp label position to stay within viewport
+  const clampedX = Math.max(80, Math.min(videoWidth - 80, labelX))
+  const clampedY = Math.max(60, labelY)
 
-  // Kalau hasil sudah ada, tampilkan nama objek dari AI
+  // Display values
   const displayLabel = result?.objectName || label.toUpperCase()
   const category = result?.category
 
   return (
     <div
       className={`
-        absolute pointer-events-none z-20
+        floating-ar-label
+        pointer-events-none z-20
         transition-all duration-300
         ${fadeIn ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}
       `}
-      style={style}
+      style={{
+        position: 'absolute',
+        left: `${clampedX}px`,
+        top: `${clampedY}px`,
+        transform: 'translateX(-50%)',
+      }}
     >
-      {/* Main label container */}
+      {/* ── Pseudo-3D Hologram Cube Icon ── */}
+      {result && (
+        <div className="hologram-cube-wrapper">
+          <div className="hologram-cube">
+            {/* Top face */}
+            <div className="cube-face cube-top" />
+            {/* Front face */}
+            <div className="cube-face cube-front">
+              <div className="cube-inner-glow" />
+            </div>
+            {/* Right face */}
+            <div className="cube-face cube-right" />
+            {/* Left face */}
+            <div className="cube-face cube-left" />
+          </div>
+          {/* Hologram base glow */}
+          <div className="hologram-base" />
+        </div>
+      )}
+
+      {/* ── Main label container with hologram effect ── */}
       <div
         className={`
-          relative px-4 py-2 rounded-xl
-          bg-gradient-to-r from-hud-bg/95 to-hud-bg/85
-          backdrop-blur-md border
-          ${isAnalyzing
-            ? 'border-hud-purple/50 animate-label-analyzing'
-            : result
-              ? 'border-hud-cyan/50 shadow-lg shadow-hud-cyan/20'
-              : 'border-hud-purple/40'}
+          relative px-4 py-3 rounded-2xl
+          ${result ? 'hologram-card' : isAnalyzing ? 'analyzing-card' : 'detected-card'}
         `}
       >
-        {/* Glow effect untuk hasil */}
-        {result && (
-          <div className="absolute inset-0 rounded-xl bg-hud-cyan/10 animate-glow-pulse" />
-        )}
+        {/* Hologram scan lines effect */}
+        {result && <div className="hologram-scanlines" />}
 
-        {/* Label text */}
-        <div className="relative flex flex-col items-center gap-0.5">
+        {/* Glow effect for results */}
+        {result && <div className="result-glow" />}
+
+        {/* Label content */}
+        <div className="relative flex flex-col items-center gap-1 z-10">
           {result ? (
             <>
-              {/* Nama objek dari AI */}
-              <span className="font-mono-tech text-sm text-hud-cyan tracking-wide">
+              {/* Object name from AI */}
+              <span className="font-mono-tech text-base text-hud-cyan tracking-wide hologram-text">
                 {displayLabel}
               </span>
               {/* Category badge */}
               {category && (
-                <span className="font-hud text-[10px] text-hud-purple/70 uppercase tracking-wider">
+                <span className="font-hud text-[10px] text-hud-purple/80 uppercase tracking-wider">
                   {category}
                 </span>
               )}
-              {/* Confidence */}
-              <span className="font-hud text-[9px] text-hud-cyan/50">
-                AI CONF: {Math.round(confidence * 100)}%
-              </span>
+              {/* Confidence & AI badge */}
+              <div className="flex items-center gap-2 mt-1">
+                <span className="font-hud text-[9px] text-hud-cyan/60">
+                  AI {Math.round(confidence * 100)}%
+                </span>
+                {result.providerUsed && (
+                  <span className="hologram-badge">
+                    {result.providerUsed}
+                  </span>
+                )}
+              </div>
             </>
           ) : isAnalyzing ? (
             <>
@@ -136,7 +153,7 @@ export function FloatingARLabel({
             </>
           ) : (
             <>
-              {/* Default label */}
+              {/* Default detected label */}
               <span className="font-mono-tech text-xs text-hud-purple/80 tracking-wide">
                 {label.toUpperCase()}
               </span>
@@ -154,7 +171,7 @@ export function FloatingARLabel({
             w-0 h-0
             border-l-[6px] border-r-[6px] border-t-[8px]
             border-l-transparent border-r-transparent
-            ${result ? 'border-t-hud-cyan/50' : isAnalyzing ? 'border-t-hud-purple/50' : 'border-t-hud-purple/40'}
+            ${result ? 'border-t-hud-cyan/60' : isAnalyzing ? 'border-t-hud-purple/60' : 'border-t-hud-purple/40'}
           `}
         />
       </div>

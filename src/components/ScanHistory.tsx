@@ -4,12 +4,14 @@ import { useScanStore } from '../store/scanStore'
 
 interface Props {
   history: ScanResult[]
+  hidden?: boolean // Hide during active AR session
 }
 
-export function ScanHistory({ history }: Props) {
+export function ScanHistory({ history, hidden = false }: Props) {
   const { clearHistory, setCurrent, current } = useScanStore()
 
-  if (history.length === 0) return null
+  // Don't render during active AR session
+  if (hidden || history.length === 0) return null
 
   return (
     <div className="space-y-3 animate-fade-in">
