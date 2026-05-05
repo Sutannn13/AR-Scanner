@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "1.0.0",
+  "contractName": "cross-agent-memory-adapter",
+  "description": "Adapter contract for ingesting and retrieving shared memory observations across IDE hosts.",
+  "requiredAdapters": [
+    "claude-code",
+    "gemini-cli",
+    "vscode-chat"
+  ],
+  "requiredOperations": {
+    "ingestion": [
+      "captureObservation",
+      "captureSessionSummary"
+    ],
+    "retrieval": [
+      "searchIndex",
+      "getTimeline",
+      "getObservations"
+    ],
+    "privacy": [
+      "applyPrivateTagRedaction",
+      "applyInlineSecretRedaction"
+    ]
+  },
+  "adapters": [
+    {
+      "adapterId": "claude-code",
+      "hostType": "plugin-hooks",
+      "status": "pilot-ready",
+      "ingestionEvents": ["SessionStart", "UserPromptSubmit", "PostToolUse", "Stop", "SessionEnd"],
+      "retrievalMode": "mcp-tools"
+    },
+    {
+      "adapterId": "gemini-cli",
+      "hostType": "plugin-hooks",
+      "status": "pilot-ready",
+      "ingestionEvents": ["session_start", "prompt_submit", "post_tool", "session_end"],
+      "retrievalMode": "mcp-tools"
+    },
+    {
+      "adapterId": "vscode-chat",
+      "hostType": "chat-customization-plugin",
+      "status": "pilot-ready",
+      "ingestionEvents": ["chatStart", "promptSubmit", "postToolUse", "chatEnd"],
+      "retrievalMode": "mcp-tools"
+    }
+  ],
+  "notes": [
+    "Web chat hosts are explicitly out of scope for this pilot because local runtime hooks are unavailable.",
+    "Adapters should emit provider-agnostic payloads matching .agent-context/state/memory-schema-v1.json."
+  ]
+}

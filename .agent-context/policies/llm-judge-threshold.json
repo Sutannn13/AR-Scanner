@@ -1,0 +1,29 @@
+{
+  "selectedProfile": "balanced",
+  "profileThresholds": {
+    "beginner": {
+      "blockingSeverities": [
+        "critical"
+      ],
+      "failOnMalformedResponse": false,
+      "failOnProviderError": false
+    },
+    "balanced": {
+      "blockingSeverities": [
+        "critical",
+        "high"
+      ],
+      "failOnMalformedResponse": true,
+      "failOnProviderError": false
+    },
+    "strict": {
+      "blockingSeverities": [
+        "critical",
+        "high",
+        "medium"
+      ],
+      "failOnMalformedResponse": true,
+      "failOnProviderError": true
+    }
+  }
+}

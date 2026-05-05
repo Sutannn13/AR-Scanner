@@ -1,0 +1,87 @@
+{
+  "version": "1.0.0",
+  "phase": "v2.5.1",
+  "updatedAt": "2026-04-13",
+  "deterministicRuntime": {
+    "timezone": "UTC",
+    "locale": "C",
+    "nodeMajor": "22",
+    "lineEndings": "LF-preferred",
+    "shellNotes": "PowerShell and POSIX shells are supported; prefer portable commands for benchmark reruns."
+  },
+  "scenarios": [
+    {
+      "id": "planning",
+      "category": "planning",
+      "inputReferences": [
+        ".agent-context/state/architecture-map.md",
+        ".agent-context/state/dependency-map.md",
+        ".agent-context/rules/architecture.md"
+      ],
+      "expectedSignals": [
+        "clear sequencing",
+        "risk mapping",
+        "rollback path"
+      ],
+      "primaryCommand": "npm run benchmark:detection"
+    },
+    {
+      "id": "refactor",
+      "category": "refactor",
+      "inputReferences": [
+        "tests/cli-smoke.test.mjs",
+        "scripts/validate.mjs"
+      ],
+      "expectedSignals": [
+        "regression awareness",
+        "small safe diffs",
+        "test-backed changes"
+      ],
+      "primaryCommand": "npm run benchmark:gate"
+    },
+    {
+      "id": "security",
+      "category": "security",
+      "inputReferences": [
+        ".agent-context/rules/security.md",
+        "scripts/forbidden-content-check.mjs"
+      ],
+      "expectedSignals": [
+        "secret hygiene",
+        "unsafe pattern detection",
+        "release blocking on risk"
+      ],
+      "primaryCommand": "npm run gate:release"
+    },
+    {
+      "id": "delivery",
+      "category": "delivery",
+      "inputReferences": [
+        "scripts/release-gate.mjs",
+        "scripts/benchmark-intelligence.mjs",
+        "scripts/benchmark-gate.mjs"
+      ],
+      "expectedSignals": [
+        "release readiness",
+        "static external watchlist retirement",
+        "no stale benchmark research dependency"
+      ],
+      "primaryCommand": "npm run benchmark:intelligence"
+    }
+  ],
+  "rerunInstructions": [
+    "Run npm run benchmark:detection to regenerate detection benchmark output.",
+    "Run npm run benchmark:gate to validate benchmark anti-regression thresholds.",
+    "Run npm run benchmark:intelligence to confirm static external benchmark watchlists stay retired.",
+    "Run npm run benchmark:bundle to emit a reproducible benchmark evidence bundle.",
+    "Run npm run benchmark:writer-judge to emit writer-judge side-by-side matrix output."
+  ],
+  "commandExamples": [
+    "npm run benchmark:detection",
+    "npm run benchmark:gate",
+    "npm run benchmark:intelligence",
+    "npm run benchmark:bundle",
+    "npm run benchmark:writer-judge",
+    "node ./scripts/benchmark-evidence-bundle.mjs --stdout-only"
+  ]
+}

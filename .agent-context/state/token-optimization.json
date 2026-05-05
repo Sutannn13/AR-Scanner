@@ -1,0 +1,115 @@
+{
+  "schemaVersion": "token-optimization-v1",
+  "enabled": true,
+  "selectedAgent": "copilot",
+  "preferredShellProxy": "native-fallback",
+  "externalProxy": {
+    "detected": false,
+    "version": null,
+    "detectionError": "Unknown external proxy detection error"
+  },
+  "commandRewriteMappings": [
+    {
+      "rawCommand": "ls -la",
+      "optimizedCommand": "rtk ls .",
+      "reason": "Directory listings are grouped and compacted before entering the model context."
+    },
+    {
+      "rawCommand": "tree",
+      "optimizedCommand": "rtk ls .",
+      "reason": "Large trees are summarized without losing high-signal structure."
+    },
+    {
+      "rawCommand": "cat file.ext",
+      "optimizedCommand": "rtk read file.ext",
+      "reason": "File reads keep signatures and relevant lines while trimming boilerplate."
+    },
+    {
+      "rawCommand": "rg pattern .",
+      "optimizedCommand": "rtk grep \"pattern\" .",
+      "reason": "Search hits are grouped and deduplicated for faster reasoning."
+    },
+    {
+      "rawCommand": "git status",
+      "optimizedCommand": "rtk git status",
+      "reason": "Status output is condensed to actionable file changes."
+    },
+    {
+      "rawCommand": "git diff",
+      "optimizedCommand": "rtk git diff",
+      "reason": "Diff noise is trimmed while preserving code-review context."
+    },
+    {
+      "rawCommand": "git log -n 10",
+      "optimizedCommand": "rtk git log -n 10",
+      "reason": "History is converted to compact one-line summaries."
+    },
+    {
+      "rawCommand": "npm test",
+      "optimizedCommand": "rtk test npm test",
+      "reason": "Test results emphasize failures and suppress repetitive pass logs."
+    },
+    {
+      "rawCommand": "npm run build",
+      "optimizedCommand": "rtk err npm run build",
+      "reason": "Build runs return errors and warnings only for quicker remediation."
+    },
+    {
+      "rawCommand": "tsc --noEmit",
+      "optimizedCommand": "rtk tsc",
+      "reason": "TypeScript diagnostics are grouped by file with less repetition."
+    },
+    {
+      "rawCommand": "eslint .",
+      "optimizedCommand": "rtk lint",
+      "reason": "Lint output is grouped by rule and location to reduce token churn."
+    },
+    {
+      "rawCommand": "docker ps",
+      "optimizedCommand": "rtk docker ps",
+      "reason": "Container state is summarized into compact rows."
+    },
+    {
+      "rawCommand": "kubectl get pods",
+      "optimizedCommand": "rtk kubectl pods",
+      "reason": "Kubernetes output is condensed and stable for agent consumption."
+    }
+  ],
+  "outputFoldingStrategy": {
+    "mode": "compact-high-signal-output",
+    "appliesTo": [
+      "shell-command-output",
+      "test-output",
+      "build-output",
+      "diff-output",
+      "log-output"
+    ],
+    "preserveAlways": [
+      "exit-code",
+      "failing-command",
+      "file-and-line",
+      "error-message",
+      "actionable-warning"
+    ],
+    "foldByDefault": [
+      "repeated-success-lines",
+      "large-unchanged-diff-context",
+      "verbose-install-progress",
+      "duplicated-stack-frames",
+      "low-signal-directory-noise"
+    ],
+    "nativeFallback": [
+      "prefer --stat or --name-only before full diff",
+      "prefer focused rg queries before broad file dumps",
+      "prefer failure-focused test reporters when available",
+      "summarize long logs before hydrating full detail"
+    ],
+    "safetyBoundary": [
+      "never hide failing checks",
+      "never drop the command that produced output",
+      "never persist secrets into summaries",
+      "hydrate full output only when the compact summary is insufficient"
+    ]
+  },
+  "generatedAt": "2026-05-05T11:40:03.850Z"
+}

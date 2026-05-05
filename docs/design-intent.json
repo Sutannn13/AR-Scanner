@@ -1,0 +1,1208 @@
+{
+  "mode": "dynamic",
+  "status": "seed-generated-during-init",
+  "seedPolicy": {
+    "mode": "structure-first-scaffold",
+    "requiresProjectSpecificRefinement": true,
+    "forbidLiteralCarryoverAsFinalArtDirection": true,
+    "repoEvidenceShouldOverrideSeedTaste": true
+  },
+  "project": {
+    "name": "ar-scanner",
+    "context": "package.json: ar-scanner | README.md: 🔭 AR Scanner — Tugas VAR UBSI **AI-powered Augmented Reality Object Scanner** dengan deteksi objek realtime menggunakan MediaPipe + Multi-Provider AI (Gemini, OpenRouter, Together, HuggingFace). Arahkan kamera ke objek → tunggu 3 detik stabil → AI otomatis mengenali dan menampilkan overlay AR dengan deskripsi objek.",
+    "domain": "Web application",
+    "runtimeConstraint": "agent-recommendation-required",
+    "architectureConstraint": "agent-recommendation-required"
+  },
+  "designPhilosophy": "Synthesize design for ar-scanner from current repo evidence, existing UI code, and the active brief. Choose visual language, libraries, color, type, spacing, and interaction from the product context \"package.json: ar-scanner | README.md: 🔭 AR Scanner — Tugas VAR UBSI **AI-powered Augmented Reality Object Scanner** dengan deteksi objek realtime menggunakan MediaPipe + Multi-Provider AI (Gemini, OpenRouter, Together, HuggingFace). Arahkan kamera ke objek → tunggu 3 detik stabil → AI otomatis mengenali dan menampilkan overlay AR dengan deskripsi objek.\"; verify technology claims with official docs.",
+  "visualDirection": {
+    "seedMode": "scaffold-only",
+    "requiresProjectSpecificSynthesis": true,
+    "selectionAuthority": "agent-llm-after-current-context-repo-evidence-and-live-official-docs",
+    "trendStance": "current-context-first-not-offline-preset-first",
+    "distinctiveMoves": [
+      "Choose one product-specific move from task, audience, content, repo evidence, and docs."
+    ],
+    "copiedReferenceAllowed": false
+  },
+  "externalResearchIntake": {
+    "userSuppliedResearchPolicy": "read-as-candidate-evidence-not-final-prescription",
+    "requireSummaryOfUsedSignals": true,
+    "requireFitFiltering": true,
+    "requireOfficialDocsVerificationForTechnologyClaims": true,
+    "candidateDomains": [
+      "visual-direction",
+      "motion-and-scroll",
+      "ui-primitives-or-rich-media",
+      "typography-and-interaction"
+    ],
+    "finalDecisionAuthority": "project-fit-accessibility-performance-maintainability-official-docs"
+  },
+  "conceptualAnchor": {
+    "mode": "required-when-no-external-research",
+    "seedMode": "selection-policy-only",
+    "anchorReference": "agent-defined-anchor-reference",
+    "requiresAgentSelectionBeforeUiImplementation": true,
+    "userResearchAbsencePolicy": {
+      "userSuppliedResearchOnly": true,
+      "scaffoldSeedDoesNotCountAsResearch": true,
+      "priorUiDoesNotCountAsResearch": true,
+      "requireAgentLedResearchWhenAvailable": true
+    },
+    "candidateSelectionPolicy": {
+      "considerAtLeast": 3,
+      "discardObviousCandidateCount": 2,
+      "minimumCandidateDistance": "high",
+      "discardPredictableCandidates": true,
+      "preferDistinctiveOverSafe": true,
+      "doNotRevealHiddenCandidateList": true,
+      "outputOnlyChosenAnchor": true
+    },
+    "creativeCommitmentPolicy": {
+      "requiredBeforeComplianceReview": true,
+      "recordInDesignDocs": true,
+      "requiredCommitmentFields": [
+        "specificReferencePoint",
+        "signatureMotion",
+        "typographicDecision"
+      ],
+      "rejectGenericQualityWordsOnly": true,
+      "specificityFloor": "name-real-material-instrument-artifact-architecture-editorial-genre-cinematic-behavior-exhibition-system-scientific-apparatus-or-industrial-mechanism"
+    },
+    "forbiddenFinalAnchorTerms": [
+      "dashboard",
+      "cards",
+      "admin-panel",
+      "saas-shell",
+      "minimalist-interface",
+      "safe-admin-layout"
+    ],
+    "sourceDomains": [
+      "complex-physical-engineering",
+      "cinematic-spatial-interface",
+      "experimental-editorial-structure",
+      "scientific-instrumentation",
+      "premium-interactive-web-experiences"
+    ],
+    "visualRiskBudget": {
+      "mode": "high-distinctiveness-with-accessibility-and-performance-guardrails",
+      "allowRichMotionAndMicroInteraction": true,
+      "rejectTimidDefaultWhenAnchorSupportsExpressiveUi": true,
+      "requireReducedMotionFallback": true
+    },
+    "requiredDerivedAxes": [
+      "typography",
+      "morphology",
+      "motion",
+      "responsive-composition"
+    ],
+    "finalAnchorContract": {
+      "requiredFields": [
+        "name",
+        "anchorReference",
+        "agentResearchMode",
+        "sourceDomain",
+        "specificReferencePoint",
+        "rationale",
+        "signatureMotion",
+        "typographicDecision",
+        "derivedTokenLogic",
+        "visualRiskBudget",
+        "motionRiskBudget",
+        "cohesionChecks"
+      ],
+      "derivedTokenLogicAxes": [
+        "morphology",
+        "motion"
+      ],
+      "cohesionChecks": [
+        "no-dashboard-mental-model",
+        "motion-derived-from-anchor"
+      ]
+    }
+  },
+  "derivedTokenLogic": {
+    "anchorReference": "agent-defined-anchor-reference",
+    "colorDerivationSource": "Explain semantic color roles from anchorReference; reject generic palettes without anchor evidence.",
+    "spacingDerivationSource": "Explain grid, rhythm, density, and exceptions from anchorReference.",
+    "typographyDerivationSource": "Explain display, body, metadata, and data roles from anchorReference.",
+    "motionDerivationSource": "Explain duration, easing, choreography, and reduced-motion from anchorReference.",
+    "validationRule": "Every token must trace to anchorReference; revise tokens that cannot."
+  },
+  "motionPaletteDecision": {
+    "productCategorySignal": "agent-inferred-starting-heuristic",
+    "densityDecisionSource": "Choose motion density from task, content, brand, device, performance, and accessibility. Categories are heuristics.",
+    "requiredInteractionStates": [
+      "default",
+      "hover",
+      "focus-visible",
+      "active",
+      "disabled",
+      "loading",
+      "empty",
+      "error",
+      "success",
+      "transition"
+    ],
+    "paletteAutopilotRisks": [
+      "dark-slate-default",
+      "cream-beige-default",
+      "purple-blue-gradient-default",
+      "monochrome-template-default",
+      "uniform-card-surface-default",
+      "generic-grid-wallpaper-default",
+      "soft-glow-ai-template-default",
+      "cyber-neon-terminal-default"
+    ],
+    "spatialDecision": "State 3D/canvas/WebGL fit. If omitted, name product-fit reason and replacement interaction quality."
+  },
+  "aiSafeUiAudit": {
+    "status": "agent-must-complete-before-ui-implementation",
+    "failureDefinition": "AI-safe UI uses template cards, generic marks, decorative grid or line wallpaper, safe palettes, glow backgrounds, or copied scaffold composition.",
+    "interchangeabilityTest": "If this UI can be renamed from ar-scanner to another product category without changing composition, palette, iconography, and motion, revise it.",
+    "requiredProductSpecificSignals": [
+      "agent-defined-product-specific-data-treatment",
+      "agent-defined-product-specific-motion-or-state-behavior",
+      "agent-defined-product-specific-morphology-iconography-or-spatial-structure"
+    ],
+    "paletteExplorationRule": "Use a visually exploratory product-derived palette with WCAG contrast and status clarity.",
+    "backgroundPatternRule": "Lines, grids, scanlines, noise, glows, blobs, logos, and geometry must serve a named product function; never use grid or line backgrounds as first-output filler.",
+    "aiColorAudit": {
+      "status": "agent-must-complete-before-ui-implementation",
+      "failureDefinition": "AI color drift uses safe defaults before deriving roles from the product anchor.",
+      "autopilotRisks": [
+        "cream-editorial-default",
+        "dark-slate-dashboard-default",
+        "purple-blue-gradient-default",
+        "monochrome-minimal-default",
+        "cyber-neon-terminal-default",
+        "soft-glow-atmosphere-default"
+      ],
+      "requiredEvidence": [
+        "anchor-derived-color-logic",
+        "semantic-role-contrast-beyond-surface-decoration",
+        "product-specific-color-behavior-that-would-not-transfer"
+      ],
+      "reviewQuestion": "Why does this palette belong to this product?"
+    },
+    "motionSpatialCourageAudit": {
+      "status": "agent-must-complete-before-ui-implementation",
+      "defaultStance": "Treat motion, scroll choreography, canvas, WebGL, and 3D as first-class options.",
+      "requiredDecisionFields": [
+        "signature-motion-or-interaction",
+        "spatial-or-3d-fit",
+        "performance-and-reduced-motion-fallback"
+      ],
+      "rejectionRule": "State a product reason and replacement interaction quality before omitting 3D/canvas.",
+      "reviewQuestion": "Is the interaction as expressive as the product can responsibly support?"
+    },
+    "reviewQuestion": "What visible evidence proves this is product-specific?",
+    "blockingByDefault": true
+  },
+  "libraryResearchStatus": "pending-verification",
+  "libraryDecisions": [
+    {
+      "library": "agent-defined-or-none",
+      "purpose": "Verify UI-related libraries against current official docs before imports.",
+      "verifiedAt": null,
+      "sourceUrl": null,
+      "stableVersion": null,
+      "fallbackIfUnavailable": "Use native CSS, browser APIs, or existing dependencies."
+    }
+  ],
+  "mathSystems": {
+    "typographyScaleRatio": "agent-calibrated-from-content-platform-and-readability",
+    "baseGridUnit": "agent-calibrated-from-platform-density-and-implementation-stack",
+    "spacingPattern": "agent-defined-from-task-flow-and-viewport-needs",
+    "densityMode": "agent-defined-from-user-task-device-and-content-pressure",
+    "seedValuesRequireCalibration": true
+  },
+  "tokenSystem": {
+    "sourceOfTruth": "docs/design-intent.json",
+    "taxonomyOrder": [
+      "primitive",
+      "semantic",
+      "component"
+    ],
+    "primitiveColorSpace": "OKLCH",
+    "requireSemanticAliases": true,
+    "semanticAliasesMutableWithoutComponentRewrite": true,
+    "componentTokensConsumeSemantic": true,
+    "forbidDirectComponentPrimitiveBypass": true,
+    "aliasReferenceStyle": "brace-reference",
+    "fallbackPolicy": {
+      "forbidRawHexOutsidePrimitives": true,
+      "forbidRawSpacingOutsidePrimitives": true,
+      "requireDocumentedExceptionForLegacyBypass": true
+    },
+    "namingConstraints": {
+      "forbidCurlyBracesInNames": true,
+      "forbidDotsInNames": true,
+      "forbidSquareBracketsInNames": true
+    }
+  },
+  "colorTruth": {
+    "format": "OKLCH",
+    "allowHexDerivatives": true,
+    "requirePerceptualLightnessCurve": true,
+    "paletteRoles": [
+      "agent-defined-semantic-roles"
+    ],
+    "rolePolicy": "minimum-semantic-scaffold",
+    "rolesAreMinimumScaffold": true,
+    "rolesMustBeAgentDefined": true,
+    "forbidAutopilotPalettesWithoutEvidence": true,
+    "intent": "Choose semantic palette roles from the product context \"package.json: ar-scanner | README.md: 🔭 AR Scanner — Tugas VAR UBSI **AI-powered Augmented Reality Object Scanner** dengan deteksi objek realtime menggunakan MediaPipe + Multi-Provider AI (Gemini, OpenRouter, Together, HuggingFace). Arahkan kamera ke objek → tunggu 3 detik stabil → AI otomatis mengenali dan menampilkan overlay AR dengan deskripsi objek.\", repo evidence, and accessibility. Reject scaffold or SaaS palette defaults."
+  },
+  "crossViewportAdaptation": {
+    "adaptByRecomposition": true,
+    "touchTargetMinPx": 44,
+    "mutationRules": {
+      "mobile": "Reorder, merge, or disclose content for mobile. Reject scale-only shrink.",
+      "tablet": "Regroup for tablet instead of width-only desktop reduction.",
+      "desktop": "Use space intentionally; avoid equal-weight modules without evidence."
+    }
+  },
+  "motionSystem": {
+    "allowMeaningfulMotion": true,
+    "purpose": "Use expressive motion when it improves hierarchy, continuity, feedback, memorability, or confidence. Verify new motion libraries with official docs.",
+    "seedToneLocked": false,
+    "densitySource": "task-content-brand-device-accessibility",
+    "respectReducedMotion": true
+  },
+  "componentMorphology": {
+    "requireStateBehaviorMatrix": true,
+    "preserveIdentityAcrossViewports": true,
+    "seedBehaviorsRequireRefinement": true,
+    "stateKeys": [
+      "default",
+      "hover",
+      "focus-visible",
+      "active",
+      "disabled",
+      "loading",
+      "empty",
+      "error",
+      "success",
+      "transition"
+    ],
+    "viewportBehavior": {
+      "mobile": "Recompose for touch, task priority, and constrained attention.",
+      "tablet": "Regroup surfaces for medium width without cloning desktop or mobile.",
+      "desktop": "Use space for hierarchy and scanability; avoid template grids."
+    }
+  },
+  "accessibilityPolicy": {
+    "hardComplianceFloor": "WCAG-2.2-AA",
+    "advisoryContrastModel": "APCA",
+    "failOnHardViolations": true,
+    "advisoryFindingsDoNotBlockByDefault": true,
+    "hardRequirements": {
+      "textContrastMinimum": true,
+      "nonTextContrast": true,
+      "useOfColorOnlyProhibited": true,
+      "focusVisible": true,
+      "focusAppearance": true,
+      "targetSizeMinimum": true,
+      "keyboardAccess": true,
+      "reflowRequired": true,
+      "accessibleAuthenticationMinimum": true,
+      "statusMessagesAndDynamicStateAccess": true
+    },
+    "advisoryChecks": {
+      "perceptualContrastReview": true,
+      "darkModeContrastTuning": true,
+      "typographyReadabilityTuning": true
+    }
+  },
+  "designExecutionPolicy": {
+    "representationStrategy": "surface-plan-v1",
+    "seedRefinementRequiredBeforeUiImplementation": true,
+    "requireSurfacePlan": true,
+    "requireComponentGraph": true,
+    "requireViewportMutationPlan": true,
+    "requireInteractionStateMatrix": true,
+    "requireContentPriorityMap": true,
+    "requireTaskFlowNarrative": true,
+    "requireSignatureMoveRationale": true,
+    "requireCreativeCommitmentGate": true,
+    "requireStructuredHandoff": true,
+    "requireRepoEvidenceAlignment": true,
+    "forbidScreenshotDependency": true,
+    "handoffFormatVersion": "ui-handoff-v1",
+    "requirePerSurfaceMutationOps": true,
+    "forbidUniformSiblingSurfaceTreatment": true,
+    "zeroBasedRedesignResetsPriorVisualsWhenRequested": true,
+    "semanticReviewFocus": [
+      "distinctiveness-vs-genericity",
+      "contract-fidelity",
+      "hierarchy-and-task-priority",
+      "component-state-behavior",
+      "cross-viewport-mutation"
+    ]
+  },
+  "designExecutionHandoff": {
+    "version": "ui-handoff-v1",
+    "location": "inline-design-intent",
+    "status": "seed-needs-refinement",
+    "seedMode": "structure-first-scaffold",
+    "requiresTaskSpecificRefinement": true,
+    "primaryExperienceGoal": "Define the main web application journey for ar-scanner from repo evidence, brief, and docs.",
+    "surfacePlan": [
+      {
+        "surfaceId": "agent-defined-primary-experience",
+        "role": "primary-context-synthesized-by-agent",
+        "goal": "Choose the first task path from product evidence; reject template shells.",
+        "antiPatterns": [
+          "dashboard-default",
+          "scale-only-responsive-layout"
+        ]
+      }
+    ],
+    "componentGraph": {
+      "nodes": [
+        {
+          "id": "primary-experience",
+          "role": "agent-defined-primary",
+          "priority": "high"
+        },
+        {
+          "id": "supporting-context",
+          "role": "agent-defined-support",
+          "priority": "medium"
+        }
+      ],
+      "edges": [
+        {
+          "from": "primary-experience",
+          "to": "supporting-context",
+          "relationship": "task-priority-support"
+        }
+      ]
+    },
+    "contentPriorityMap": {
+      "primary": [
+        "agent-defined-core-task-or-reading-path"
+      ],
+      "secondary": [
+        "agent-defined-supporting-context"
+      ],
+      "deferred": [
+        "agent-defined-deferred-or-hidden-content"
+      ]
+    },
+    "viewportMutationPlan": {
+      "mobile": {
+        "primaryOperation": "agent-defined-mobile-recomposition",
+        "requiredSurfaceActions": [
+          "choose-mobile-task-order",
+          "disclose-or-remove-low-priority-content"
+        ],
+        "forbiddenPatterns": [
+          "scale-only-shrink"
+        ],
+        "rationale": "Reorder, merge, or disclose content for mobile. Reject scale-only shrink."
+      },
+      "tablet": {
+        "primaryOperation": "agent-defined-tablet-regrouping",
+        "requiredSurfaceActions": [
+          "define-medium-width-grouping",
+          "preserve-task-clarity"
+        ],
+        "forbiddenPatterns": [
+          "uniform-module-grid-without-role-change"
+        ],
+        "rationale": "Regroup for tablet instead of width-only desktop reduction."
+      },
+      "desktop": {
+        "primaryOperation": "agent-defined-desktop-composition",
+        "requiredSurfaceActions": [
+          "use-space-to-improve-hierarchy",
+          "avoid-equalizing-unrelated-content"
+        ],
+        "forbiddenPatterns": [
+          "interchangeable-dashboard-or-landing-chrome"
+        ],
+        "rationale": "Use space intentionally; avoid equal-weight modules without evidence."
+      }
+    },
+    "interactionStateMatrix": [
+      {
+        "componentId": "primary-interaction",
+        "states": [
+          "default",
+          "hover",
+          "focus",
+          "loading",
+          "error"
+        ],
+        "notes": "Refine states from project language and anchor; reject anonymous panels."
+      }
+    ],
+    "taskFlowNarrative": [
+      "Entry: start ar-scanner from real evidence, not a generic opener.",
+      "Resolution: define proof, feedback, recovery, and next action."
+    ],
+    "visualResetStrategy": {
+      "activatesWhenUserRequests": [
+        "redesign from zero",
+        "redesain dari 0"
+      ],
+      "existingUiAllowedAs": [
+        "content-evidence",
+        "behavior-evidence",
+        "asset-source-evidence"
+      ],
+      "existingUiForbiddenAs": [
+        "palette-source",
+        "layout-source",
+        "motion-source"
+      ],
+      "requiredResetAxes": [
+        "composition",
+        "hierarchy",
+        "motion-or-interaction",
+        "responsive-information-architecture"
+      ]
+    },
+    "signatureMoveRationale": "Choose one project-specific visual, motion, type, or interaction move.",
+    "creativeCommitment": {
+      "status": "agent-must-complete-before-ui-implementation",
+      "requiredFields": [
+        "specificReferencePoint",
+        "signatureMotion",
+        "typographicDecision"
+      ],
+      "failureMode": "generic quality words without a real-world reference fail"
+    },
+    "implementationGuardrails": {
+      "requireBuildFromHandoff": true,
+      "requireGapNotesBeforeFallback": true,
+      "forbidGenericLayoutFallbackWithoutReason": true
+    }
+  },
+  "reviewRubric": {
+    "version": "ui-rubric-v1",
+    "genericityAutoFail": true,
+    "dimensions": [
+      {
+        "key": "distinctiveness",
+        "blockingByDefault": true,
+        "question": "Is the UI authored and product-specific?"
+      },
+      {
+        "key": "contractFidelity",
+        "blockingByDefault": true,
+        "question": "Does the UI follow contract, priorities, and accessibility?"
+      },
+      {
+        "key": "visualConsistency",
+        "blockingByDefault": false,
+        "question": "Do type, spacing, color, and states form one system?"
+      },
+      {
+        "key": "heuristicUxQuality",
+        "blockingByDefault": false,
+        "question": "Does the UI preserve clarity, feedback, and confidence?"
+      },
+      {
+        "key": "motionDiscipline",
+        "blockingByDefault": false,
+        "question": "Is motion purposeful, performant, reduced-motion-safe, and on-tone?"
+      }
+    ],
+    "genericitySignals": [
+      "offline-prescribed-style-used-as-final-direction",
+      "unresearched-library-or-framework-choice",
+      "missing-conceptual-anchor-without-external-research",
+      "visual-decisions-not-derived-from-conceptual-anchor",
+      "ai-safe-ui-template-look",
+      "ai-color-default-palette-without-product-role-behavior",
+      "brandless-clean-template-look",
+      "interchangeable-product-renaming-test-fails",
+      "decorative-grid-or-glow-wallpaper-without-product-function",
+      "safe-cream-slate-or-monochrome-palette-used-as-readability-excuse",
+      "generic-abstract-logo-or-iconography",
+      "timid-anchor-that-renames-dashboard-or-admin-shell",
+      "motion-suppressed-without-accessibility-or-performance-reason",
+      "motion-or-3d-omitted-from-fear-without-fit-analysis",
+      "scale-only-responsive-layout",
+      "zero-based-redesign-kept-prior-visual-dna",
+      "restyle-instead-of-recomposition"
+    ],
+    "validBoldSignals": [
+      "single-cohesive-conceptual-anchor",
+      "high-variance-candidate-selection",
+      "context-derived-visual-direction",
+      "three-at-a-glance-product-specific-signals",
+      "visually-exploratory-accessible-palette-derived-from-product",
+      "audacious-accessible-palette-with-product-role-behavior",
+      "background-or-geometry-serves-product-function",
+      "motion-or-spatial-experience-derived-from-anchor",
+      "explicit-3d-canvas-fit-or-nonfit-decision",
+      "responsive-recomposition-by-task-priority",
+      "purposeful-motion-with-reduced-motion-path"
+    ],
+    "reportingRules": {
+      "mustExplainGenericity": true,
+      "mustSeparateTasteFromFailure": true,
+      "contractFidelityOverridesPersonalTaste": true
+    }
+  },
+  "contextHygiene": {
+    "continuityMode": "opt-in-only",
+    "allowedSources": [
+      "current-repo-evidence",
+      "current-user-brief",
+      "current-project-docs",
+      "explicitly-approved-current-task-constraints"
+    ],
+    "taintedSources": [
+      "prior-chat-visual-memory",
+      "unrelated-project-aesthetics",
+      "remembered-screenshots-without-current-approval",
+      "generic-template-recall"
+    ],
+    "repoEvidenceOverridesMemory": true,
+    "requireExplicitContinuityApproval": true,
+    "forbidCarryoverWhenUnapproved": true,
+    "approvedExternalConstraintUsage": "Convert approved external constraints into current-project rules; do not imitate source surfaces.",
+    "driftSignals": [
+      "palette-reused-without-brief-support",
+      "prior-ui-visual-dna-carried-into-reset-request"
+    ]
+  },
+  "forbiddenPatterns": [
+    "offline-prescribed-style-used-as-final-direction",
+    "missing-conceptual-anchor-without-external-research",
+    "visual-decisions-not-derived-from-conceptual-anchor",
+    "ai-safe-ui-template-look",
+    "ai-color-default-palette-without-product-role-behavior",
+    "brandless-clean-template-look",
+    "interchangeable-product-renaming-test-fails",
+    "decorative-grid-or-glow-wallpaper-without-product-function",
+    "safe-cream-slate-or-monochrome-palette-used-as-readability-excuse",
+    "generic-abstract-logo-or-iconography",
+    "timid-anchor-that-renames-dashboard-or-admin-shell",
+    "motion-suppressed-without-accessibility-or-performance-reason",
+    "motion-or-3d-omitted-from-fear-without-fit-analysis",
+    "scale-only-responsive-layout",
+    "zero-based-redesign-kept-prior-visual-dna",
+    "restyle-instead-of-recomposition",
+    "single-safe-typographic-family-without-role-contrast-or-rationale"
+  ],
+  "validationHints": [
+    "rejectArbitraryHexOnlyPalette",
+    "requireViewportMutationRules",
+    "requirePerceptualColorRationale",
+    "requireTokenLayering",
+    "requireTokenAliasingPlan",
+    "allowHexDerivatives",
+    "requireMotionRationale",
+    "requireStateMorphology",
+    "requireAccessibilitySplit",
+    "requireWcagHardFloor",
+    "requireStructuredDesignExecutionPolicy",
+    "requireStructuredDesignHandoff",
+    "requireVisualResetStrategyWhenZeroBasedRedesignRequested",
+    "requireConceptualAnchorWhenNoExternalResearch",
+    "requireAgentLedAnchorResearchWhenUserResearchMissing",
+    "rejectTimidDashboardAnchor",
+    "requireReviewRubric",
+    "requireGenericityExplanation",
+    "genericityAutoFail",
+    "requireSignatureMove",
+    "rejectTemplateNeutralLayout",
+    "requireAiSafeUiAudit",
+    "requireAiColorAudit",
+    "rejectAiColorDefaults",
+    "requireMotionSpatialCourageAudit",
+    "requireExplicit3dCanvasFitDecision",
+    "rejectSafetyAsCreativitySubstitute",
+    "rejectAiSafeUiTemplateLook",
+    "requireThreeProductSpecificSignals",
+    "rejectDecorativeBackgroundPatternsWithoutProductFunction"
+  ],
+  "requiredDesignSections": [
+    "Design Intent and Product Personality",
+    "Audience and Use-Context Signals",
+    "Visual Direction and Distinctive Moves",
+    "Color Science and Semantic Roles",
+    "Typographic Engineering and Hierarchy",
+    "Spacing, Layout Rhythm, and Density Strategy",
+    "Token Architecture and Alias Strategy",
+    "Responsive Strategy and Cross-Viewport Adaptation Matrix",
+    "Interaction, Motion, and Feedback Rules",
+    "Component Language, Morphology, and Shared Patterns",
+    "Context Hygiene and Source Boundaries",
+    "Accessibility Non-Negotiables",
+    "Anti-Patterns to Avoid",
+    "Implementation Notes for Future UI Tasks"
+  ],
+  "implementation": {
+    "requiredDeliverables": [
+      "docs/DESIGN.md",
+      "docs/design-intent.json"
+    ],
+    "requireDesignRationale": true,
+    "requireDistinctVisualDirection": true,
+    "requireMachineReadableContract": true,
+    "requireViewportMutationRules": true,
+    "requirePurposefulMotionGuidelines": true,
+    "requireRecognizableVisualBet": true,
+    "requireConceptualAnchor": true,
+    "bootstrapPrompt": ".agent-context/prompts/bootstrap-design.md",
+    "autoLoadedRuleFiles": [
+      ".agent-context/prompts/bootstrap-design.md",
+      ".agent-context/rules/frontend-architecture.md"
+    ],
+    "disallowedAutoLoadedRuleFiles": [
+      ".agent-context/rules/database-design.md",
+      ".agent-context/rules/docker-runtime.md",
+      ".agent-context/rules/microservices.md"
+    ]
+  },
+  "initSignals": {
+    "detectedFrom": [
+      "ui markers: src, tailwind.config.js, vite.config.ts, index.html",
+      "ui dependencies: react, react-dom, tailwindcss",
+      "workspace src: ui markers: components"
+    ],
+    "generatedBy": "init-existing-project-seed"
+  },
+  "repoEvidence": {
+    "uiSignalReasons": [
+      "ui markers: src, tailwind.config.js, vite.config.ts, index.html",
+      "ui dependencies: react, react-dom, tailwindcss",
+      "workspace src: ui markers: components"
+    ],
+    "frontendMetrics": {
+      "scannedFileCount": 18,
+      "hardcodedColorCount": 236,
+      "propDrillingCandidateCount": 3,
+      "mediaQueryCount": 16,
+      "tailwindBreakpointUsageCount": 11,
+      "arbitraryBreakpointCount": 0,
+      "uniqueMediaWidthCount": 4,
+      "structuredClassAttributeCount": 255,
+      "boundClassExpressionCount": 8,
+      "inlineStyleObjectCount": 30,
+      "inlineStyleBindingCount": 0,
+      "inlineStyleTokenBypassCount": 67
+    },
+    "designEvidenceSummary": {
+      "summaryVersion": "v1",
+      "source": "lightweight-static-scan",
+      "scanRootRelativePaths": [
+        "src"
+      ],
+      "scannedFileCount": 18,
+      "cssVariables": {
+        "definitionCount": 15,
+        "referenceCount": 19,
+        "sampleNames": [
+          "hud-cyan",
+          "hud-purple",
+          "hud-bg",
+          "hud-card",
+          "hud-border",
+          "app-padding",
+          "card-gap",
+          "safe-bottom",
+          "safe-top",
+          "safe-left",
+          "safe-right"
+        ],
+        "categoryCounts": {
+          "color": 2,
+          "spacing": 6,
+          "radius": 0,
+          "shadow": 0,
+          "typography": 0,
+          "motion": 0,
+          "other": 7
+        }
+      },
+      "colors": {
+        "hardcodedCount": 236,
+        "kindCounts": {
+          "hex": 40,
+          "rgb": 196,
+          "hsl": 0,
+          "oklch": 0,
+          "other": 0
+        },
+        "sampleValues": [
+          "rgba(0,255,213,0.08)",
+          "rgba(10, 10, 20, 0.95)",
+          "rgba(255, 50, 50, 0.1)",
+          "rgba(255, 100, 100, 0.3)",
+          "#ff6b6b",
+          "rgba(255, 150, 150, 0.8)",
+          "rgba(0,0,0,0.3)",
+          "rgba(255, 200, 200, 0.5)",
+          "rgba(0, 255, 213, 0.1)",
+          "rgba(0, 255, 213, 0.4)",
+          "#00ffd5",
+          "rgba(0, 255, 213, 0.2)"
+        ]
+      },
+      "spacing": {
+        "rawValueCount": 181,
+        "sampleValues": [
+          "3px",
+          "20px",
+          "24px",
+          "12px",
+          "10px",
+          "280px",
+          "640px",
+          "16px",
+          "1024px",
+          "100vw",
+          "4px",
+          "480px"
+        ]
+      },
+      "radius": {
+        "rawValueCount": 38,
+        "sampleValues": [
+          "12px",
+          "6px",
+          "4px",
+          "8px",
+          "10px",
+          "3px",
+          "14px",
+          "16px",
+          "24px",
+          "999px",
+          "2px"
+        ]
+      },
+      "shadow": {
+        "rawValueCount": 24,
+        "sampleValues": [
+          "0 0 30px rgba(0,255,213,0.1), 0 0 60px rgba(0,255,213,0.05), inset 0 1px 0 rgba(0,255,213,0.1)',",
+          "0 0 10px ${pct >= 90 ? 'rgba(0,255,213,0.6)' : pct >= 70 ? 'rgba(0,255,213,0.4)' : 'rgba(255,68,68,0.6)'",
+          "0 0 10px rgba(0,255,213,0.2)',",
+          "0 0 20px rgba(0,255,213,0.3), 0 0 40px rgba(0,255,213,0.1), inset 0 0 20px rgba(0,255,213,0.05)',",
+          "0 0 0 1px rgba(0,255,213,0.3),",
+          "0 0 0 2px var(--hud-cyan), 0 0 40px rgba(0,255,213,0.25), 0 0 80px rgba(0,255,213,0.1)",
+          "0 0 0 1px rgba(0,255,213,0.3), 0 0 20px rgba(0,255,213,0.15)",
+          "0 0 8px var(--hud-cyan), 0 0 16px rgba(0,255,213,0.5)",
+          "0 0 4px var(--hud-cyan), 0 0 8px rgba(0,255,213,0.3)",
+          "0 0 10px rgba(0,255,213,0.3), 0 0 20px rgba(0,255,213,0.1)",
+          "0 0 20px rgba(0,255,213,0.5), 0 0 40px rgba(0,255,213,0.2)",
+          "0 0 15px #00ffd5, 0 0 40px rgba(0,255,213,0.6)"
+        ]
+      },
+      "typography": {
+        "fontFamilyCount": 32,
+        "fontSizeCount": 45,
+        "lineHeightCount": 5,
+        "letterSpacingCount": 19,
+        "fontFamilySamples": [
+          "monospace',",
+          "Rajdhani', sans-serif",
+          "Share Tech Mono', monospace"
+        ],
+        "fontSizeSamples": [
+          "32px",
+          "18px",
+          "13px",
+          "11px",
+          "16px",
+          "9px",
+          "10px",
+          "12px",
+          "8px",
+          "15px",
+          "14px"
+        ],
+        "lineHeightSamples": [
+          "1",
+          "1.5",
+          "1.4"
+        ],
+        "letterSpacingSamples": [
+          "0.15em",
+          "0.2em",
+          "0.1em",
+          "0.05em",
+          "0.12em",
+          "0.04em",
+          "0.08em"
+        ]
+      },
+      "motion": {
+        "transitionCount": 23,
+        "animationCount": 48,
+        "durationCount": 54,
+        "durationSamples": [
+          "100ms",
+          "0.2s",
+          "300ms",
+          "2s",
+          "0.3s",
+          "0.5s",
+          "1s",
+          "1.5s",
+          "0.8s",
+          "0.4s",
+          "0.6s",
+          "0.1s"
+        ]
+      },
+      "tailwind": {
+        "breakpointUsageCount": 11,
+        "arbitraryBreakpointCount": 0,
+        "utilityFamilyCounts": {
+          "70": 1,
+          "90": 1,
+          "app": 4,
+          "header": 5,
+          "text": 111,
+          "font": 47,
+          "glow": 2,
+          "status": 3,
+          "${cameraStatus.active": 1,
+          "?": 32,
+          "'bg": 26,
+          "animate": 45,
+          "alert": 8,
+          "flex": 48,
+          "mt": 6,
+          "ml": 1,
+          "underline": 1,
+          "cooldown": 6,
+          "ar": 61,
+          "scan": 5,
+          "footer": 1,
+          "camera": 5,
+          "${isActive": 1,
+          "'scanning": 1,
+          "'camera": 1,
+          "${isScanArmed": 1,
+          "'ar": 1,
+          "''}": 2,
+          "${arResult": 1,
+          "'result": 1,
+          "absolute": 42,
+          "inset": 20,
+          "opacity": 2,
+          "pointer": 11,
+          "w": 34,
+          "h": 38,
+          "bg": 27,
+          "rounded": 54,
+          "tracking": 18,
+          "${": 5,
+          "isActive": 2,
+          "'animate": 2,
+          "''": 1,
+          "}": 7,
+          "left": 10,
+          "right": 8,
+          "top": 7,
+          "bottom": 8,
+          "border": 56,
+          "items": 32,
+          "justify": 17,
+          "relative": 10,
+          "space": 6,
+          "gap": 22,
+          "mx": 1,
+          "animation": 2,
+          "transition": 15,
+          "duration": 13,
+          "===": 6,
+          "'error'": 2,
+          "isProcessing": 1,
+          "isScanArmed": 1,
+          "px": 16,
+          "py": 15,
+          "${borderColor}": 5,
+          "${isStable": 8,
+          "'shadow": 1,
+          "shadow": 2,
+          "backdrop": 1,
+          "'border": 4,
+          "'text": 5,
+          "overflow": 5,
+          "${fadeIn": 3,
+          "'opacity": 8,
+          "translate": 2,
+          "hologram": 3,
+          "cube": 9,
+          "floating": 1,
+          "${isAnalyzing": 2,
+          "'analyzing": 1,
+          "'detected": 1,
+          "z": 2,
+          "${categoryStyle}": 1,
+          "uppercase": 1,
+          "leading": 4,
+          "object": 2,
+          "mb": 1,
+          "pct": 2,
+          ">=": 2,
+          "ease": 1,
+          "pl": 1,
+          "from": 4,
+          "to": 4,
+          "grid": 4,
+          "p": 2,
+          "group": 2,
+          "pt": 1,
+          "result.providerUsed": 3,
+          "'Gemini'": 1,
+          "'OpenRouter'": 1,
+          "'Together'": 1,
+          "${isDisabled": 2,
+          "outline": 1,
+          "cursor": 2,
+          "scale": 3,
+          "min": 2,
+          "busy": 1,
+          "arButtonStatus": 1,
+          "transform": 1,
+          "${current?.id": 1,
+          "item.id": 1,
+          "'ring": 1,
+          "ring": 3,
+          "aspect": 1,
+          "via": 1,
+          "line": 1
+        },
+        "utilityFamilySamples": [
+          "app",
+          "header",
+          "text",
+          "font",
+          "glow",
+          "status",
+          "${cameraStatus.active",
+          "?",
+          "'bg",
+          "animate",
+          "alert",
+          "flex"
+        ]
+      },
+      "componentInventory": {
+        "componentFileCount": 14,
+        "pageFileCount": 2,
+        "layoutFileCount": 0,
+        "surfaceFileSamples": [
+          "src/App.tsx",
+          "src/components/CameraView.tsx",
+          "src/components/DetectionBox.tsx",
+          "src/components/ErrorBoundary.tsx",
+          "src/components/FloatingARLabel.tsx",
+          "src/components/InfoCard.tsx",
+          "src/components/ScanButton.tsx",
+          "src/components/ScanHistory.tsx",
+          "src/hooks/useCamera.ts",
+          "src/hooks/useObjectDetector.ts",
+          "src/hooks/useStableObject.ts",
+          "src/index.css"
+        ]
+      },
+      "structuredInspection": {
+        "mode": "attribute-aware-static-scan",
+        "classAttributeCount": 255,
+        "boundClassExpressionCount": 8,
+        "inlineStyleObjectCount": 30,
+        "inlineStyleBindingCount": 0,
+        "classAttributeSamples": [
+          "app-shell",
+          "app-header",
+          "header-icon",
+          "text-hud-cyan",
+          "header-text",
+          "font-mono-tech text-hud-cyan glow-cyan header-title",
+          "header-subtitle",
+          "header-status",
+          "status-dot ${cameraStatus.active ? 'bg-hud-cyan animate-pulse-glow' : 'bg-hud-border'}",
+          "status-label",
+          "app-main",
+          "alert-box alert-info"
+        ],
+        "inlineStyleSamples": [
+          "background: 'rgba(0,255,213,0.08)'",
+          "animationDuration: `${cooldownSeconds}s`",
+          "height: '3px'",
+          "width: `${progress * 100}%`",
+          "position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(10, 10, 20, 0.95)', zIndex: 9999, padding: '20px', fontFamily: 'monospace',",
+          "maxWidth: '500px', padding: '24px', background: 'rgba(255, 50, 50, 0.1)', border: '1px solid rgba(255, 100, 100, 0.3)', borderRadius: '12px', textAlign: 'center',",
+          "fontSize: '32px', marginBottom: '16px',",
+          "color: '#ff6b6b', fontSize: '18px', marginBottom: '12px', fontFamily: 'monospace',",
+          "color: 'rgba(255, 150, 150, 0.8)', fontSize: '13px', marginBottom: '16px', fontFamily: 'monospace', wordBreak: 'break-word', background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: '6px', maxHeight: '150px', overflow: 'auto',",
+          "color: 'rgba(255, 200, 200, 0.5)', fontSize: '11px', marginBottom: '20px', fontFamily: 'monospace',",
+          "padding: '10px 24px', background: 'rgba(0, 255, 213, 0.1)', border: '1px solid rgba(0, 255, 213, 0.4)', borderRadius: '6px', color: '#00ffd5', fontFamily: 'monospace', fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s',",
+          "width: `${confidencePercent}%`"
+        ],
+        "utilityFamilyCounts": {
+          "70": 1,
+          "90": 1,
+          "app": 4,
+          "header": 5,
+          "text": 111,
+          "font": 47,
+          "glow": 2,
+          "status": 3,
+          "${cameraStatus.active": 1,
+          "?": 32,
+          "'bg": 26,
+          "animate": 45,
+          "alert": 8,
+          "flex": 48,
+          "mt": 6,
+          "ml": 1,
+          "underline": 1,
+          "cooldown": 6,
+          "ar": 61,
+          "scan": 5,
+          "footer": 1,
+          "camera": 5,
+          "${isActive": 1,
+          "'scanning": 1,
+          "'camera": 1,
+          "${isScanArmed": 1,
+          "'ar": 1,
+          "''}": 2,
+          "${arResult": 1,
+          "'result": 1,
+          "absolute": 42,
+          "inset": 20,
+          "opacity": 2,
+          "pointer": 11,
+          "w": 34,
+          "h": 38,
+          "bg": 27,
+          "rounded": 54,
+          "tracking": 18,
+          "${": 5,
+          "isActive": 2,
+          "'animate": 2,
+          "''": 1,
+          "}": 7,
+          "left": 10,
+          "right": 8,
+          "top": 7,
+          "bottom": 8,
+          "border": 56,
+          "items": 32,
+          "justify": 17,
+          "relative": 10,
+          "space": 6,
+          "gap": 22,
+          "mx": 1,
+          "animation": 2,
+          "transition": 15,
+          "duration": 13,
+          "===": 6,
+          "'error'": 2,
+          "isProcessing": 1,
+          "isScanArmed": 1,
+          "px": 16,
+          "py": 15,
+          "${borderColor}": 5,
+          "${isStable": 8,
+          "'shadow": 1,
+          "shadow": 2,
+          "backdrop": 1,
+          "'border": 4,
+          "'text": 5,
+          "overflow": 5,
+          "${fadeIn": 3,
+          "'opacity": 8,
+          "translate": 2,
+          "hologram": 3,
+          "cube": 9,
+          "floating": 1,
+          "${isAnalyzing": 2,
+          "'analyzing": 1,
+          "'detected": 1,
+          "z": 2,
+          "${categoryStyle}": 1,
+          "uppercase": 1,
+          "leading": 4,
+          "object": 2,
+          "mb": 1,
+          "pct": 2,
+          ">=": 2,
+          "ease": 1,
+          "pl": 1,
+          "from": 4,
+          "to": 4,
+          "grid": 4,
+          "p": 2,
+          "group": 2,
+          "pt": 1,
+          "result.providerUsed": 3,
+          "'Gemini'": 1,
+          "'OpenRouter'": 1,
+          "'Together'": 1,
+          "${isDisabled": 2,
+          "outline": 1,
+          "cursor": 2,
+          "scale": 3,
+          "min": 2,
+          "busy": 1,
+          "arButtonStatus": 1,
+          "transform": 1,
+          "${current?.id": 1,
+          "item.id": 1,
+          "'ring": 1,
+          "ring": 3,
+          "aspect": 1,
+          "via": 1,
+          "line": 1
+        },
+        "utilityFamilySamples": [
+          "app",
+          "header",
+          "text",
+          "font",
+          "glow",
+          "status",
+          "${cameraStatus.active",
+          "?",
+          "'bg",
+          "animate",
+          "alert",
+          "flex"
+        ],
+        "inlineTokenBypassSignals": {
+          "hardcodedColorCount": 55,
+          "rawSpacingCount": 6,
+          "rawRadiusCount": 3,
+          "rawShadowCount": 3,
+          "cssVariableReferenceCount": 0
+        }
+      },
+      "tokenBypassSignals": {
+        "hardcodedColorCount": 236,
+        "rawSpacingCount": 181,
+        "rawRadiusCount": 38,
+        "rawShadowCount": 24,
+        "inlineHardcodedColorCount": 55,
+        "inlineRawSpacingCount": 6,
+        "inlineRawRadiusCount": 3,
+        "inlineRawShadowCount": 3,
+        "inlineCssVariableReferenceCount": 0
+      }
+    },
+    "workspaceUiEntries": [
+      {
+        "relativePath": "src",
+        "detectedUiMarkers": [
+          "components"
+        ],
+        "detectedUiDependencies": []
+      }
+    ]
+  }
+}

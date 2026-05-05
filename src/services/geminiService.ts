@@ -1,6 +1,6 @@
 import type { ScanResult } from '../types'
 
-// ── MULTI-PROVIDER AI SERVICE ────────────────────────────────────────────────
+// ── MULTI-PROVIDER AI SERVICE WITH USAGE TRACKING ─────────────────────────────
 // Fallback chain:
 //   1. Gemini  gemini-2.0-flash-lite         (PRIMARY)
 //   2. Gemini  gemini-2.0-flash             (FALLBACK 1)
@@ -10,8 +10,16 @@ import type { ScanResult } from '../types'
 //   6. HuggingFace blip-image-captioning-large(FALLBACK 5)
 //
 // COOLDOWN IS PER-PROVIDER:
-///  - One provider's 429 does NOT block any other provider
+//   - One provider's 429 does NOT block any other provider
 //   - Scan button is NEVER blocked by cooldown
+//
+// DAILY USAGE LIMIT:
+//   - Default 25 requests per day, tracked in localStorage
+//   - Real external provider requests only (no Mock AI)
+//
+// PROVIDER MODE:
+//   - auto: fallback chain capped by max attempts
+//   - gemini-only/openrouter-only/together-only/hf-only
 
 // ── Provider types ───────────────────────────────────────────────────────────
 type ProviderName = 'Gemini' | 'OpenRouter' | 'Together' | 'HuggingFace'
@@ -20,6 +28,123 @@ interface ModelSlot {
   provider: ProviderName
   model: string
   call: (base64Jpeg: string) => Promise<ScanResult>
+}
+
+// ── Environment config ───────────────────────────────────────────────────────
+const DAILY_LIMIT = Number(import.meta.env.VITE_DAILY_SCAN_LIMIT) || 25
+const PROVIDER_MODE = (import.meta.env.VITE_AI_PROVIDER_MODE as string) || 'auto'
+const MAX_PROVIDER_ATTEMPTS = Number(import.meta.env.VITE_MAX_PROVIDER_ATTEMPTS) || 2
+
+// ── Image compression utility ───────────────────────────────────────────────
+function compressImage(base64: string, maxDim = 768, quality = 0.72): Promise<string> {
+  return new Promise((resolve, reject) => {
+    try {
+      // Decode base64 to binary
+      const binaryString = atob(base64)
+      const bytes = new Uint8Array(binaryString.length)
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i)
+      }
+      const blob = new Blob([bytes], { type: 'image/jpeg' })
+      const url = URL.createObjectURL(blob)
+
+      const img = new Image()
+      img.onload = () => {
+        URL.revokeObjectURL(url)
+
+        // Calculate target dimensions maintaining aspect ratio
+        let { width, height } = img
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height / width) * maxDim)
+            width = maxDim
+          } else {
+            width = Math.round((width / height) * maxDim)
+            height = maxDim
+          }
+        }
+
+        // Draw compressed version to canvas
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          reject(new Error('Cannot get canvas 2D context'))
+          return
+        }
+
+        ctx.drawImage(img, 0, 0, width, height)
+        resolve(canvas.toDataURL('image/jpeg', quality).split(',')[1])
+      }
+      img.onerror = () => {
+        URL.revokeObjectURL(url)
+        reject(new Error('Failed to load image for compression'))
+      }
+      img.src = url
+    } catch (err) {
+      reject(err)
+    }
+  })
+}
+
+// ── Daily API usage tracking ───────────────────────────────────────────────────
+function getTodayKey(): string {
+  const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
+  return `ar_scanner_real_api_usage_${today}`
+}
+
+export function getTodayApiUsage(): number {
+  try {
+    const raw = localStorage.getItem(getTodayKey())
+    return raw ? parseInt(raw, 10) : 0
+  } catch {
+    return 0
+  }
+}
+
+export function getDailyApiLimit(): number {
+  return DAILY_LIMIT
+}
+
+export function getProviderMode(): string {
+  return PROVIDER_MODE
+}
+
+function incrementTodayUsage(): void {
+  try {
+    const key = getTodayKey()
+    const current = getTodayApiUsage()
+    localStorage.setItem(key, String(current + 1))
+  } catch {
+    // localStorage may be unavailable (private browsing, quota exceeded)
+    console.warn('[AR Scanner] Cannot write to localStorage for usage tracking')
+  }
+}
+
+function checkDailyLimit(): void {
+  const usage = getTodayApiUsage()
+  if (usage >= DAILY_LIMIT) {
+    throw new Error(
+      `Batas penggunaan AI harian tercapai (${DAILY_LIMIT} request). Coba lagi besok atau gunakan API key baru.`
+    )
+  }
+}
+
+// ── Usage change listeners ───────────────────────────────────────────────────
+const usageListeners: Array<(usage: number) => void> = []
+
+export function onApiUsageChange(cb: (usage: number) => void): () => void {
+  usageListeners.push(cb)
+  return () => {
+    const idx = usageListeners.indexOf(cb)
+    if (idx >= 0) usageListeners.splice(idx, 1)
+  }
+}
+
+function notifyUsageChange(): void {
+  const usage = getTodayApiUsage()
+  usageListeners.forEach((cb) => cb(usage))
 }
 
 // ── Shared prompt ────────────────────────────────────────────────────────────
@@ -49,7 +174,10 @@ Aturan penting:
   const ok = import.meta.env.VITE_OPENROUTER_API_KEY
   const tk = import.meta.env.VITE_TOGETHER_API_KEY
   const hk = import.meta.env.VITE_HF_API_KEY
+  const usage = getTodayApiUsage()
   console.log('[AR Scanner] ═══ Multi-Provider AI Service ═══')
+  console.log('[AR Scanner]  Provider mode:', PROVIDER_MODE, '| Max attempts:', MAX_PROVIDER_ATTEMPTS)
+  console.log('[AR Scanner]  Daily limit:', DAILY_LIMIT, '| Today used:', usage)
   console.log('[AR Scanner]  1. Gemini gemini-2.0-flash-lite   ', gk ? '✅' : '❌ no key')
   console.log('[AR Scanner]  2. Gemini gemini-2.0-flash        ', gk ? '✅' : '❌ no key')
   console.log('[AR Scanner]  3. OpenRouter qwen3-vl-8b          ', ok ? '✅' : '❌ no key')
@@ -60,8 +188,6 @@ Aturan penting:
 })()
 
 // ── PER-PROVIDER cooldown tracking ───────────────────────────────────────────
-// Each provider has its own cooldown — one provider's rate limit does NOT
-// block other providers.
 const providerCooldownUntil: Record<ProviderName, number> = {
   Gemini: 0,
   OpenRouter: 0,
@@ -90,7 +216,6 @@ export function onCooldownTick(cb: (remaining: number) => void) {
 }
 
 function notifyCooldownUI(seconds: number) {
-  // Only notify UI — this is informational, not blocking
   const endTime = Date.now() + seconds * 1000
   const tick = () => {
     const remaining = Math.max(0, Math.ceil((endTime - Date.now()) / 1000))
@@ -100,7 +225,6 @@ function notifyCooldownUI(seconds: number) {
   tick()
 }
 
-// These are kept exported for compatibility but DO NOT block scanning
 export function getCooldownRemaining(): number { return 0 }
 export function isCoolingDown(): boolean { return false }
 
@@ -185,7 +309,6 @@ async function callGemini(base64Jpeg: string, model: string): Promise<ScanResult
     const errText = await response.text()
     const retryMatch = errText.match(/"retryDelay":\s*"(\d+)s"/)
     const retrySeconds = retryMatch ? parseInt(retryMatch[1], 10) : 30
-    // Per-provider cooldown — does NOT block other providers
     setProviderCooldown('Gemini', retrySeconds)
     notifyCooldownUI(retrySeconds)
     throw new Error(`Gemini ${model} rate limited (429)`)
@@ -396,7 +519,6 @@ async function callHuggingFace(base64Jpeg: string): Promise<ScanResult> {
 
   await waitForRateLimit()
 
-  // Decode base64 to binary Blob for multipart/form-data
   const binaryString = atob(base64Jpeg)
   const bytes = new Uint8Array(binaryString.length)
   for (let i = 0; i < binaryString.length; i++) {
@@ -428,17 +550,14 @@ async function callHuggingFace(base64Jpeg: string): Promise<ScanResult> {
     throw new Error(`HuggingFace error ${response.status}: ${errText.slice(0, 200)}`)
   }
 
-  // BLIP returns a plain string caption, not JSON
   const caption: string = await response.json()
 
-  // Build a structured result from the caption text
   const parsed = buildResultFromCaption(caption)
   return buildResult(parsed, base64Jpeg, 'HuggingFace', 'Salesforce/blip-image-captioning-large')
 }
 
 // ── Build structured result from a plain caption (no JSON available) ────────
 function buildResultFromCaption(caption: string): Record<string, unknown> {
-  // Caption is like "a red apple on a wooden table"
   const name = caption.split(/[,.]/)[0].trim()
   const nameMap: Record<string, { objectName: string; category: string }> = {
     'a red apple': { objectName: 'Apel Merah', category: 'Makanan' },
@@ -481,63 +600,96 @@ function buildResultFromCaption(caption: string): Record<string, unknown> {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  MAIN: analyzeImage with full fallback chain
-//  - Cooldown is PER-PROVIDER: skips cooled-down providers, tries the rest
-//  - Scan button is NEVER blocked
-//  - Zero delay between fallbacks
+//  MAIN: analyzeImage with compression, usage tracking, and provider mode
 // ═══════════════════════════════════════════════════════════════════════════════
-export async function analyzeImage(base64Jpeg: string): Promise<ScanResult> {
-  // Build fallback chain — only include providers with API keys
+export async function analyzeImage(rawBase64: string): Promise<ScanResult> {
+  // ── Step 1: Check daily limit ───────────────────────────────────────────
+  checkDailyLimit()
+
+  // ── Step 2: Compress image (768x768, 0.72 JPEG quality) ─────────────────
+  let base64: string
+  try {
+    base64 = await compressImage(rawBase64, 768, 0.72)
+  } catch {
+    // Fallback: use raw image if compression fails
+    console.warn('[AR Scanner] Image compression failed, using original')
+    base64 = rawBase64
+  }
+
+  // ── Step 3: Build slot list based on provider mode ───────────────────────
+  const mode = PROVIDER_MODE
+
+  function checkKey(name: string, key: string | undefined): void {
+    if (mode !== 'auto' && !key?.trim()) {
+      throw new Error(`Provider AI belum dikonfigurasi. Periksa environment variable API key.`)
+    }
+  }
+
   const allSlots: ModelSlot[] = []
 
-  if (import.meta.env.VITE_GEMINI_API_KEY) {
-    allSlots.push({
-      provider: 'Gemini',
-      model: 'gemini-2.0-flash-lite',
-      call: (img) => callGemini(img, 'gemini-2.0-flash-lite'),
-    })
-    allSlots.push({
-      provider: 'Gemini',
-      model: 'gemini-2.0-flash',
-      call: (img) => callGemini(img, 'gemini-2.0-flash'),
-    })
+  if (mode === 'auto' || mode === 'gemini-only') {
+    if (import.meta.env.VITE_GEMINI_API_KEY) {
+      allSlots.push({
+        provider: 'Gemini',
+        model: 'gemini-2.0-flash-lite',
+        call: (img) => callGemini(img, 'gemini-2.0-flash-lite'),
+      })
+      allSlots.push({
+        provider: 'Gemini',
+        model: 'gemini-2.0-flash',
+        call: (img) => callGemini(img, 'gemini-2.0-flash'),
+      })
+    } else {
+      checkKey('Gemini', import.meta.env.VITE_GEMINI_API_KEY)
+    }
   }
 
-  if (import.meta.env.VITE_OPENROUTER_API_KEY) {
-    allSlots.push({
-      provider: 'OpenRouter',
-      model: 'qwen/qwen3-vl-8b-instruct',
-      call: callOpenRouterQwen,
-    })
-    allSlots.push({
-      provider: 'OpenRouter',
-      model: 'google/gemma-3-12b-it:free',
-      call: callOpenRouterGemma,
-    })
+  if (mode === 'auto' || mode === 'openrouter-only') {
+    if (import.meta.env.VITE_OPENROUTER_API_KEY) {
+      allSlots.push({
+        provider: 'OpenRouter',
+        model: 'qwen/qwen3-vl-8b-instruct',
+        call: callOpenRouterQwen,
+      })
+      allSlots.push({
+        provider: 'OpenRouter',
+        model: 'google/gemma-3-12b-it:free',
+        call: callOpenRouterGemma,
+      })
+    } else {
+      checkKey('OpenRouter', import.meta.env.VITE_OPENROUTER_API_KEY)
+    }
   }
 
-  if (import.meta.env.VITE_TOGETHER_API_KEY) {
-    allSlots.push({
-      provider: 'Together',
-      model: 'meta-llama/Llama-Vision-Free',
-      call: callTogether,
-    })
+  if (mode === 'auto' || mode === 'together-only') {
+    if (import.meta.env.VITE_TOGETHER_API_KEY) {
+      allSlots.push({
+        provider: 'Together',
+        model: 'meta-llama/Llama-Vision-Free',
+        call: callTogether,
+      })
+    } else {
+      checkKey('Together', import.meta.env.VITE_TOGETHER_API_KEY)
+    }
   }
 
-  if (import.meta.env.VITE_HF_API_KEY) {
-    allSlots.push({
-      provider: 'HuggingFace',
-      model: 'Salesforce/blip-image-captioning-large',
-      call: callHuggingFace,
-    })
+  if (mode === 'auto' || mode === 'hf-only') {
+    if (import.meta.env.VITE_HF_API_KEY) {
+      allSlots.push({
+        provider: 'HuggingFace',
+        model: 'Salesforce/blip-image-captioning-large',
+        call: callHuggingFace,
+      })
+    } else {
+      checkKey('HuggingFace', import.meta.env.VITE_HF_API_KEY)
+    }
   }
 
   if (allSlots.length === 0) {
     throw new Error('❌ Tidak ada API key yang dikonfigurasi.\nTambahkan minimal VITE_GEMINI_API_KEY di file .env')
   }
 
-  // FILTER OUT providers that are currently in cooldown
-  // Key: one provider's 429 → skip only that provider, try others instantly
+  // ── Step 4: Filter out cooldown providers ────────────────────────────────
   const activeSlots = allSlots.filter((slot) => {
     if (isProviderInCooldown(slot.provider)) {
       console.log(`[AR Scanner] ⏭️ Skipping ${slot.provider} (${slot.model}) — in cooldown`)
@@ -546,19 +698,28 @@ export async function analyzeImage(base64Jpeg: string): Promise<ScanResult> {
     return true
   })
 
-  // If ALL providers are in cooldown, try them anyway (cooldown might have expired)
   const slots = activeSlots.length > 0 ? activeSlots : allSlots
 
-  // Try each model in order — zero delay between fallbacks
+  // ── Step 5: Apply max attempts cap ─────────────────────────────────────
+  const maxAttempts = Math.min(MAX_PROVIDER_ATTEMPTS, slots.length)
+  const attemptSlots = slots.slice(0, maxAttempts)
+
+  // ── Step 6: Try each model in order ───────────────────────────────────
   const errors: string[] = []
 
-  for (let i = 0; i < slots.length; i++) {
-    const slot = slots[i]
-    const isLast = i === slots.length - 1
+  for (let i = 0; i < attemptSlots.length; i++) {
+    const slot = attemptSlots[i]
+    const isLast = i === attemptSlots.length - 1
 
     try {
       console.log(`[AR Scanner] 🔄 Trying ${slot.provider} → ${slot.model}...`)
-      const result = await slot.call(base64Jpeg)
+
+      // Increment usage BEFORE making the request
+      incrementTodayUsage()
+      notifyUsageChange()
+      console.log(`[AR Scanner] 📊 API usage: ${getTodayApiUsage()} / ${DAILY_LIMIT}`)
+
+      const result = await slot.call(base64)
       console.log(`[AR Scanner] ✅ Success via ${slot.provider} (${slot.model})`)
       return result
     } catch (err) {
@@ -572,7 +733,6 @@ export async function analyzeImage(base64Jpeg: string): Promise<ScanResult> {
         )
       }
 
-      // Instantly try next — zero delay
       continue
     }
   }

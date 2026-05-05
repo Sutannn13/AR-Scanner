@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "memory-continuity-v1",
+  "enabled": true,
+  "hydrationMode": "progressive-disclosure",
+  "adapters": [
+    "claude-code",
+    "gemini-cli",
+    "vscode-chat"
+  ],
+  "retrieval": {
+    "sessionStartIndexLimit": 8,
+    "fullHydrationLimit": 2
+  },
+  "privacy": {
+    "redactPrivateTags": true,
+    "redactInlineSensitivePatterns": true
+  },
+  "generatedAt": "2026-05-05T11:40:03.845Z"
+}

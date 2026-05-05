@@ -39,7 +39,7 @@
 html {
   overflow-x: hidden;
   -webkit-text-size-adjust: 100%;
-  -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -200,6 +200,18 @@ body::after {
   color: rgba(0,255,213,0.4);
 }
 
+.api-usage-counter {
+  flex-shrink: 0;
+}
+
+.api-usage-text {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px;
+  color: rgba(0,255,213,0.3);
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
 @media (min-width: 640px) {
   .header-icon {
     width: 40px;
@@ -214,6 +226,9 @@ body::after {
   }
   .status-label {
     display: block;
+  }
+  .api-usage-text {
+    font-size: 9px;
   }
 }
 
@@ -354,17 +369,27 @@ body::after {
    CAMERA VIEW — RESPONSIVE
    ═══════════════════════════════════════════════════════ */
 
-/* ── Camera Container: 16:9 aspect ratio, responsive ── */
+/* ── Camera Container: responsive, portrait 9:16 on mobile ── */
 .camera-container {
   position: relative;
   width: 100%;
-  /* Always 16:9 regardless of screen size */
-  aspect-ratio: 16 / 9;
-  max-width: 960px;
   overflow: hidden;
   border-radius: 12px;
   background: #000;
   transition: all 0.5s ease;
+}
+
+/* Mobile (<= 768px): portrait 9:16, full-screen feel */
+@media (max-width: 768px) {
+  .camera-container {
+    width: min(100%, 430px);
+    aspect-ratio: 9 / 16;
+    max-height: calc(100svh - 220px);
+    min-height: 520px;
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: 8px;
+  }
 }
 
 .camera-video {
@@ -377,16 +402,18 @@ body::after {
 
 @media (max-width: 480px) {
   .camera-container {
-    border-radius: 8px;
-    /* 16:9 on mobile too */
-    aspect-ratio: 16 / 9;
+    width: min(100%, 400px);
+    max-height: calc(100svh - 200px);
+    min-height: 480px;
+    border-radius: 6px;
   }
 }
 
 @media (min-width: 640px) {
   .camera-container {
-    border-radius: 14px;
+    aspect-ratio: 16 / 9;
     max-width: 900px;
+    border-radius: 14px;
   }
 }
 

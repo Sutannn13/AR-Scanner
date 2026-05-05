@@ -1,0 +1,41 @@
+{
+  "timestamp": "2026-05-05T11:40:03.776Z",
+  "files": {
+    ".instructions.md": {
+      "action": "delete"
+    },
+    ".cursorrules": {
+      "action": "delete"
+    },
+    ".windsurfrules": {
+      "action": "delete"
+    },
+    "AGENTS.md": {
+      "action": "delete"
+    },
+    "CLAUDE.md": {
+      "action": "delete"
+    },
+    "GEMINI.md": {
+      "action": "delete"
+    },
+    ".cursor\\rules\\agentic-senior-core.mdc": {
+      "action": "delete"
+    },
+    ".github\\copilot-instructions.md": {
+      "action": "delete"
+    },
+    ".github\\instructions\\agentic-senior-core.instructions.md": {
+      "action": "delete"
+    },
+    ".windsurf\\rules\\agentic-senior-core.md": {
+      "action": "delete"
+    },
+    ".agent-override.md": {
+      "action": "delete"
+    },
+    ".agent-context": {
+      "action": "delete"
+    }
+  }
+}

@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Benchmark Before-vs-After Comparison",
+  "description": "Schema for comparing benchmark results across releases or configuration changes. Each entry captures quality, bug signal, runtime, and token metrics for a before and after snapshot.",
+  "type": "object",
+  "required": ["schemaVersion", "comparisonId", "generatedAt", "before", "after", "delta"],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "comparisonId": {
+      "type": "string",
+      "description": "Unique identifier for this comparison run."
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "baselineVersion": {
+      "type": "string",
+      "description": "Package version of the before snapshot."
+    },
+    "candidateVersion": {
+      "type": "string",
+      "description": "Package version of the after snapshot."
+    },
+    "comparisonType": {
+      "type": "string",
+      "enum": ["release-to-release", "config-change", "model-swap", "manual"],
+      "description": "What triggered this comparison."
+    },
+    "before": { "$ref": "#/$defs/snapshot" },
+    "after": { "$ref": "#/$defs/snapshot" },
+    "delta": { "$ref": "#/$defs/deltaReport" },
+    "verdict": {
+      "type": "string",
+      "enum": ["pass", "warn", "fail"],
+      "description": "Overall comparison verdict based on threshold policy."
+    },
+    "verdictReason": {
+      "type": "string",
+      "description": "Human-readable explanation of the verdict."
+    }
+  },
+  "$defs": {
+    "snapshot": {
+      "type": "object",
+      "required": ["capturedAt", "quality", "runtime"],
+      "properties": {
+        "capturedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "packageVersion": {
+          "type": "string"
+        },
+        "quality": {
+          "type": "object",
+          "properties": {
+            "top1Accuracy": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Fraction of scenarios where the top-ranked output was correct."
+            },
+            "manualCorrectionRate": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Fraction of outputs requiring human correction."
+            },
+            "averageJudgeScore": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 10,
+              "description": "Mean score across all judge dimensions."
+            },
+            "scenarioCount": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "bugSignal": {
+          "type": "object",
+          "properties": {
+            "validationFailures": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of validation check failures."
+            },
+            "securityWarnings": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "deprecationWarnings": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "runtime": {
+          "type": "object",
+          "properties": {
+            "totalDurationMs": {
+              "type": "number",
+              "description": "Total benchmark suite execution time in milliseconds."
+            },
+            "averageScenarioDurationMs": {
+              "type": "number"
+            },
+            "peakMemoryMb": {
+              "type": "number"
+            }
+          }
+        },
+        "token": {
+          "type": "object",
+          "properties": {
+            "nativeSavingsPercent": {
+              "type": "number",
+              "description": "Token savings from native optimization."
+            },
+            "proxySavingsPercent": {
+              "type": "number",
+              "description": "Token savings from external proxy optimization."
+            },
+            "totalInputTokens": {
+              "type": "integer"
+            },
+            "totalOutputTokens": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    },
+    "deltaReport": {
+      "type": "object",
+      "properties": {
+        "top1AccuracyChange": {
+          "type": "number",
+          "description": "After minus before. Positive means improvement."
+        },
+        "manualCorrectionRateChange": {
+          "type": "number",
+          "description": "After minus before. Negative means improvement."
+        },
+        "averageJudgeScoreChange": {
+          "type": "number"
+        },
+        "validationFailureChange": {
+          "type": "integer"
+        },
+        "totalDurationMsChange": {
+          "type": "number"
+        },
+        "nativeSavingsChange": {
+          "type": "number"
+        },
+        "regressionDetected": {
+          "type": "boolean",
+          "description": "True if any metric crossed a threshold in the wrong direction."
+        },
+        "regressionDetails": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "metric": { "type": "string" },
+              "threshold": { "type": "number" },
+              "actual": { "type": "number" },
+              "direction": { "type": "string", "enum": ["increase", "decrease"] }
+            }
+          }
+        }
+      }
+    }
+  }
+}

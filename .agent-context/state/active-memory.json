@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "active-memory-v1",
+  "snapshotPurpose": "compact-cross-session-continuity",
+  "updatePolicy": {
+    "writeWhen": "natural-task-boundary",
+    "overwriteOnlyWithCurrentRepoEvidence": true,
+    "preserveUserOwnedContent": true
+  },
+  "project": {
+    "name": "ar-scanner",
+    "currentFocus": "",
+    "durableFacts": []
+  },
+  "progress": {
+    "lastAchievements": [],
+    "pendingIssues": [],
+    "nextBestActions": [],
+    "validationState": []
+  },
+  "designContinuity": {
+    "visualLanguageContinuity": "opt-in-only",
+    "currentConceptualAnchor": "",
+    "forbiddenCarryover": [
+      "prior-project-style-memory",
+      "old-ui-visual-dna-without-user-approval",
+      "generic-dashboard-defaults"
+    ]
+  },
+  "privacy": {
+    "storeSecrets": false,
+    "storeRawChatLogs": false,
+    "redactSensitiveTextBeforeWriting": true
+  },
+  "generatedAt": "2026-05-05T11:40:03.846Z",
+  "lastUpdatedAt": null
+}

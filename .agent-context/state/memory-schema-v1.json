@@ -1,0 +1,88 @@
+{
+  "schemaVersion": "1.0.0",
+  "schemaName": "cross-agent-memory-observation",
+  "description": "Provider-agnostic schema for persistent memory observations shared across coding agents and IDE hosts.",
+  "requiredFields": [
+    "id",
+    "projectId",
+    "sessionId",
+    "adapterId",
+    "eventType",
+    "timestamp",
+    "title",
+    "summary",
+    "detail",
+    "privacy"
+  ],
+  "fieldDefinitions": {
+    "id": {
+      "type": "string",
+      "description": "Stable unique observation identifier."
+    },
+    "projectId": {
+      "type": "string",
+      "description": "Repository or workspace identifier."
+    },
+    "sessionId": {
+      "type": "string",
+      "description": "Source session identifier from host adapter."
+    },
+    "adapterId": {
+      "type": "string",
+      "allowedValues": ["claude-code", "gemini-cli", "vscode-chat", "custom"],
+      "description": "Host adapter that captured this observation."
+    },
+    "eventType": {
+      "type": "string",
+      "allowedValues": ["prompt", "tool-use", "decision", "summary", "issue", "context"],
+      "description": "Observation type for retrieval filtering."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO timestamp when observation was captured."
+    },
+    "title": {
+      "type": "string",
+      "description": "Compact human-readable headline."
+    },
+    "summary": {
+      "type": "string",
+      "description": "Compact session-start payload used for progressive disclosure."
+    },
+    "detail": {
+      "type": "string",
+      "description": "Expanded observation text fetched on demand."
+    },
+    "tags": {
+      "type": "array",
+      "items": "string",
+      "description": "Optional normalized tags for query refinement."
+    },
+    "privacy": {
+      "type": "object",
+      "requiredFields": ["level", "redactionApplied"],
+      "fieldDefinitions": {
+        "level": {
+          "type": "string",
+          "allowedValues": ["public", "internal", "restricted"],
+          "description": "Privacy classification level."
+        },
+        "redactionApplied": {
+          "type": "boolean",
+          "description": "Indicates whether privacy sanitization modified payload content."
+        },
+        "redactionReasons": {
+          "type": "array",
+          "items": "string",
+          "description": "Redaction reason tags such as private-tag or token-like-value."
+        }
+      }
+    }
+  },
+  "retrievalContract": {
+    "sessionStartPayload": ["id", "adapterId", "eventType", "timestamp", "title", "summary"],
+    "onDemandPayload": ["detail", "tags", "privacy"],
+    "progressiveDisclosure": true
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "minimumTop1Accuracy": 0.9,
+  "maximumManualCorrectionRate": 0.12,
+  "maximumTop1AccuracyDrop": 0.02,
+  "maximumManualCorrectionIncrease": 0.03,
+  "previousReleaseBaseline": {
+    "top1Accuracy": 0.9167,
+    "manualCorrectionRate": 0.0833
+  }
+}

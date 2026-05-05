@@ -4,7 +4,7 @@ import { useCamera } from './hooks/useCamera'
 import { useObjectDetector } from './hooks/useObjectDetector'
 import { useStableObject } from './hooks/useStableObject'
 import { useScanStore, useARStore, useARSessionStore } from './store/scanStore'
-import { analyzeImage, onCooldownTick } from './services/geminiService'
+import { analyzeImage, onCooldownTick, getTodayApiUsage, getDailyApiLimit, onApiUsageChange } from './services/geminiService'
 import { CameraView } from './components/CameraView'
 import { ScanButton } from './components/ScanButton'
 import { InfoCard } from './components/InfoCard'
@@ -43,6 +43,18 @@ export default function App() {
     status, current, history, error, cooldownSeconds,
     setStatus, setError, addResult, setCurrent, setCooldown,
   } = useScanStore()
+
+  // ── API Usage tracking state ──────────────────────────────────────────────
+  const [apiUsage, setApiUsage] = useState(getTodayApiUsage())
+  const dailyLimit = getDailyApiLimit()
+
+  // Listen to usage changes from geminiService
+  useEffect(() => {
+    const unsub = onApiUsageChange((usage) => {
+      setApiUsage(usage)
+    })
+    return unsub
+  }, [])
 
   const {
     isScanArmed,
@@ -516,6 +528,13 @@ export default function App() {
           <Wifi size={12} className={cameraStatus.active ? 'text-hud-cyan' : 'text-hud-border'} />
           <span className="status-label">
             {cameraStatus.label}
+          </span>
+        </div>
+
+        {/* API usage counter */}
+        <div className="api-usage-counter">
+          <span className="api-usage-text">
+            API hari ini: {apiUsage} / {dailyLimit}
           </span>
         </div>
       </header>

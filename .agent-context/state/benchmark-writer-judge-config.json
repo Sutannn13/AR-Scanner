@@ -1,0 +1,58 @@
+{
+  "version": "1.0.0",
+  "phase": "v2.5.1",
+  "blindReviewMode": true,
+  "writerLane": {
+    "models": [
+      {
+        "id": "writer-copilot-balanced",
+        "provider": "github-copilot",
+        "profile": "balanced"
+      },
+      {
+        "id": "writer-claude-architect",
+        "provider": "anthropic",
+        "profile": "architect"
+      },
+      {
+        "id": "writer-gemini-ops",
+        "provider": "google",
+        "profile": "operations"
+      }
+    ],
+    "weights": {
+      "quality": 40,
+      "efficiency": 20,
+      "reliability": 25,
+      "freshness": 15
+    },
+    "scenarioMultipliers": {
+      "planning": 1,
+      "refactor": 1.02,
+      "security": 1.03,
+      "delivery": 0.98
+    }
+  },
+  "judgeLane": {
+    "models": [
+      {
+        "id": "judge-claude-audit",
+        "provider": "anthropic",
+        "profile": "audit"
+      },
+      {
+        "id": "judge-gpt-risk",
+        "provider": "openai",
+        "profile": "risk"
+      }
+    ],
+    "minimumCompositeScore": 75,
+    "leniencyWindow": 2,
+    "weights": {
+      "clarity": 35,
+      "correctness": 35,
+      "risk": 20,
+      "consistency": 10
+    }
+  }
+}

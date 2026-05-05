@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p \"d:\\\\DATA SUTAN ARLIE JOHAN\\\\MATKUL S6\\\\VAR\\\\ar-scanner\\\\.vscode\")"
+    ],
+    "additionalDirectories": [
+      "d:\\DATA SUTAN ARLIE JOHAN\\MATKUL S6\\VAR\\ar-scanner\\.vscode"
+    ]
+  }
+}
