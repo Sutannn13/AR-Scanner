@@ -60,6 +60,12 @@ export default function App() {
   // ── Refs ───────────────────────────────────────────────────────────────────────
   const analysisInProgressRef = useRef(false)
   const stableProgressRef = useRef<number>(0)
+  // Grace period timer: jangan hapus result segera saat objek hilang
+  const targetLostTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Ref untuk AR result agar timer callback dapat nilai terbaru
+  const arResultRef = useRef(arResult)
+  useEffect(() => { arResultRef.current = arResult }, [arResult])
+  const GRACE_PERIOD_MS = 2000
 
   // ── AR Button Status ────────────────────────────────────────────────────────
   const getARButtonStatus = (): ARButtonStatus => {
@@ -142,35 +148,42 @@ export default function App() {
 
   // ── Stability tracking - AR session aware ──────────────────────────────────
   const handleOnLost = useCallback((label: string) => {
-    console.log(`[AR Session] 🔴 Target lost: ${label}`)
-
+    // HANYA log kalau tracking label yang sedang dianalisis
     if (trackedLabel === label) {
-      clearAROverlay()
-      clearARResult()
-      analysisInProgressRef.current = false
+      console.log(`[AR Session] 🔴 Target lost: ${label} — starting grace period ${GRACE_PERIOD_MS}ms`)
 
-      // If session was armed, mark session as done (user must scan again)
-      if (isScanArmed) {
-        finishARScanSession()
+      // Jangan hapus result imediatamente — beri grace period
+      if (targetLostTimerRef.current) {
+        clearTimeout(targetLostTimerRef.current)
       }
+
+      targetLostTimerRef.current = setTimeout(() => {
+        // Setelah grace period: baru hapus jika result masih ada
+        if (arResultRef.current) {
+          console.log(`[AR Session] 🗑️ Grace period expired — clearing result`)
+          clearAROverlay()
+          clearARResult()
+          analysisInProgressRef.current = false
+
+          if (isScanArmed) {
+            finishARScanSession()
+          }
+        }
+      }, GRACE_PERIOD_MS)
     }
+    // Ignore lost labels yang bukan trackedLabel
   }, [trackedLabel, clearAROverlay, clearARResult, isScanArmed, finishARScanSession])
 
   const handleOnStable = useCallback((obj: DetectedObject) => {
     // ONLY trigger if AR session is armed and hasn't analyzed yet
-    if (!isScanArmed) {
-      console.log(`[AR Session] ⏸️ Object stable but session not armed, ignoring`)
-      return
-    }
+    if (!isScanArmed) return
+    if (hasAnalyzedCurrentTarget) return
+    if (analysisInProgressRef.current) return
 
-    if (hasAnalyzedCurrentTarget) {
-      console.log(`[AR Session] ⏸️ Current target already analyzed, ignoring`)
-      return
-    }
-
-    if (analysisInProgressRef.current) {
-      console.log(`[AR Session] ⏸️ Analysis already in progress, ignoring`)
-      return
+    // Cancel any pending target-lost timer
+    if (targetLostTimerRef.current) {
+      clearTimeout(targetLostTimerRef.current)
+      targetLostTimerRef.current = null
     }
 
     console.log(`[AR Session] 🟢 Stable target found: ${obj.label}`)
@@ -201,6 +214,15 @@ export default function App() {
     updateDetections(detections)
   }, [detections, updateDetections])
 
+  // ── Cleanup grace period timer on unmount ─────────────────────────────────
+  useEffect(() => {
+    return () => {
+      if (targetLostTimerRef.current) {
+        clearTimeout(targetLostTimerRef.current)
+      }
+    }
+  }, [])
+
   // ── Start AR Scan Session ───────────────────────────────────────────────────
   const handleStartARScan = useCallback(() => {
     console.log('[AR Session] 🔵 User pressed START AR SCAN')
@@ -219,6 +241,12 @@ export default function App() {
   // ── Reset to idle / start new session ──────────────────────────────────────
   const handleResetARScan = useCallback(() => {
     console.log('[AR Session] 🔄 User pressed SCAN AGAIN')
+
+    // Cancel pending grace period timer
+    if (targetLostTimerRef.current) {
+      clearTimeout(targetLostTimerRef.current)
+      targetLostTimerRef.current = null
+    }
 
     clearAROverlay()
     clearARResult()

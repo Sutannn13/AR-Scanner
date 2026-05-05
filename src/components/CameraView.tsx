@@ -127,31 +127,25 @@ export function CameraView({
           )
         })}
 
-      {/* 
-        ── Floating AR Label untuk hasil AI ──
-
-        PENTING:
-        FloatingARLabel harus menerima bbox NORMALIZED 0–1.
-        Jangan pakai normalizeBboxToPixel() di sini.
-        FloatingARLabel akan menghitung posisi pixel sendiri.
+      {/*
+        ── Floating AR Label: hasil AI akhir (mode center, tidak mengikuti bbox) ──
+        mode="center" → panel di tengah viewport, stabil, readable
       */}
-      {arResult && stableObject && (
+      {arResult && (
         <FloatingARLabel
-          label={stableObject.label}
-          confidence={stableObject.confidence}
+          label={arResult.objectName}
+          confidence={arResult.confidence}
           isAnalyzing={false}
           result={arResult}
-          bbox={stableObject.bbox}
+          bbox={{ originX: 0.5, originY: 0.5, width: 0.1, height: 0.1 }}
           videoWidth={videoWidth || 1}
           videoHeight={videoHeight || 1}
+          mode="center"
         />
       )}
 
-      {/* 
-        ── Floating AR Label saat analyzing ──
-
-        Sama seperti result label:
-        bbox harus NORMALIZED, bukan pixel.
+      {/*
+        ── Floating AR Label saat analyzing (mode anchor, mengikuti bbox) ──
       */}
       {arOverlay?.isAnalyzing && stableObject && (
         <FloatingARLabel
@@ -162,6 +156,7 @@ export function CameraView({
           bbox={stableObject.bbox}
           videoWidth={videoWidth || 1}
           videoHeight={videoHeight || 1}
+          mode="anchor"
         />
       )}
 

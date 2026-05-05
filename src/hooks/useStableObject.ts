@@ -135,12 +135,11 @@ export function useStableObject({
     const toRemove: number[] = []
     for (let i = 0; i < tracked.length; i++) {
       if (now - tracked[i].lastSeen > TRACKING_TIMEOUT_MS) {
-        console.log(`[useStableObject] 🔴 Objek hilang dari tracking: ${tracked[i].label}`)
-        toRemove.push(i)
-        // Trigger onLost callback
+        // Only log if onLost is provided and will actually be called
         if (onLost) {
           onLost(tracked[i].label)
         }
+        toRemove.push(i)
       }
     }
 
@@ -165,8 +164,6 @@ export function useStableObject({
       if (stableDuration >= stabilityThresholdMs) {
         // Mark sebagai triggered agar tidak dipanggil lagi
         obj.triggeredStable = true
-
-        console.log(`[useStableObject] 🟢 Objek stabil: ${obj.label} (${Math.round(progress * 100)}%)`)
 
         // Return objek dengan confidence tertinggi
         if (!newlyStable || obj.confidence > newlyStable.confidence) {
