@@ -54,12 +54,20 @@ export function FloatingARLabel({
   const labelY = bbox.originY * videoHeight - 80 // 80px di atas bbox
 
   // Clamp label position to stay within viewport
-  const clampedX = Math.max(80, Math.min(videoWidth - 80, labelX))
-  const clampedY = Math.max(60, labelY)
+  const clampedX = Math.max(140, Math.min(videoWidth - 140, labelX))
+  const clampedY = Math.max(60, Math.min(videoHeight - 180, labelY))
 
   // Display values
   const displayLabel = result?.objectName || label.toUpperCase()
   const category = result?.category
+  const description = result?.description
+  const funFacts = result?.funFacts
+
+  // Console debug
+  console.log('[FloatingARLabel] rendered description:', description)
+
+  // Fallback description
+  const displayDescription = description?.trim() || 'Deskripsi objek tidak tersedia.'
 
   return (
     <div
@@ -74,6 +82,7 @@ export function FloatingARLabel({
         left: `${clampedX}px`,
         top: `${clampedY}px`,
         transform: 'translateX(-50%)',
+        width: '280px',
       }}
     >
       {/* ── Pseudo-3D Hologram Cube Icon ── */}
@@ -114,7 +123,7 @@ export function FloatingARLabel({
           {result ? (
             <>
               {/* Object name from AI */}
-              <span className="font-mono-tech text-base text-hud-cyan tracking-wide hologram-text">
+              <span className="font-mono-tech text-sm text-hud-cyan tracking-wide hologram-text">
                 {displayLabel}
               </span>
               {/* Category badge */}
@@ -123,8 +132,35 @@ export function FloatingARLabel({
                   {category}
                 </span>
               )}
+              {/* AI Description Panel */}
+              <div className="w-full mt-2 px-3 py-2 rounded-lg bg-hud-black/60 border border-hud-cyan/30">
+                {/* "AI DESCRIPTION" heading */}
+                <div className="font-hud text-[9px] text-hud-cyan/60 uppercase tracking-widest mb-1">
+                  AI DESCRIPTION
+                </div>
+                {/* Description text */}
+                <p className="font-hud text-[11px] text-hud-cyan/90 leading-relaxed max-h-16 overflow-hidden">
+                  {displayDescription}
+                </p>
+                {/* Fun facts (up to 2) */}
+                {funFacts && funFacts.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-hud-cyan/20">
+                    <div className="font-hud text-[8px] text-hud-purple/60 uppercase tracking-wider mb-1">
+                      Fun Facts
+                    </div>
+                    {funFacts.slice(0, 2).map((fact, idx) => (
+                      <div key={idx} className="flex items-start gap-1">
+                        <span className="text-hud-purple/40 text-[8px] mt-0.5">▸</span>
+                        <span className="font-hud text-[10px] text-hud-purple/80 leading-tight">
+                          {fact}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               {/* Confidence & AI badge */}
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-2 mt-2">
                 <span className="font-hud text-[9px] text-hud-cyan/60">
                   AI {Math.round(confidence * 100)}%
                 </span>
