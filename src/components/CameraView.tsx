@@ -3,7 +3,7 @@
 // Viewport utama untuk camera feed dengan AR overlay.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type {
   ScanStatus,
   DetectionResult,
@@ -11,8 +11,46 @@ import type {
   BoundingBox,
   ScanResult,
 } from '../types'
+import type { TrackingState } from './FloatingARLabel'
 import { DetectionBox } from './DetectionBox'
 import { FloatingARLabel } from './FloatingARLabel'
+
+// Tracking health constants
+const IOU_THRESHOLD = 0.25
+const GRACE_BEFORE_UNSTABLE_MS = 500 // Start "unstable" after 500ms of no detection
+const GRACE_PERIOD_MS = 2000 // Clear result after 2000ms of no detection
+
+/**
+ * Calculate IoU between two normalized bounding boxes (0-1 coords).
+ */
+function calculateIoU(a: BoundingBox, b: BoundingBox): number {
+  const x1 = Math.max(a.originX, b.originX)
+  const y1 = Math.max(a.originY, b.originY)
+  const x2 = Math.min(a.originX + a.width, b.originX + b.width)
+  const y2 = Math.min(a.originY + a.height, b.originY + b.height)
+  if (x2 <= x1 || y2 <= y1) return 0
+  const intersectArea = (x2 - x1) * (y2 - y1)
+  const aArea = a.width * a.height
+  const bArea = b.width * b.height
+  const unionArea = aArea + bArea - intersectArea
+  return unionArea > 0 ? intersectArea / unionArea : 0
+}
+
+/**
+ * Find a detection matching the tracked label with acceptable IoU.
+ */
+function findMatchingDetection(
+  detections: DetectionResult[],
+  trackedLabel: string,
+  trackedBbox: BoundingBox
+): DetectionResult | null {
+  for (const det of detections) {
+    if (det.label.toLowerCase() !== trackedLabel.toLowerCase()) continue
+    const iou = calculateIoU(trackedBbox, det.boundingBox)
+    if (iou > IOU_THRESHOLD) return det
+  }
+  return null
+}
 
 interface Props {
   videoRef: React.RefObject<HTMLVideoElement>
@@ -74,7 +112,55 @@ export function CameraView({
   const isActive = status === 'scanning'
   const isProcessing = status === 'processing'
 
-  // Notify parent tentang detections
+  // ── AR Result Tracking State ──────────────────────────────────────────────
+  // Track whether the result target is still visible or lost
+  const trackedBboxRef = useRef<BoundingBox | null>(null)
+  const trackedLabelRef = useRef<string | null>(null)
+  const lastMatchTimeRef = useRef<number>(0)
+  const trackingStateRef = useRef<TrackingState>('locked')
+  const [trackingState, setTrackingState] = useState<TrackingState>('locked')
+
+  // Update tracked bbox/label when arResult is set
+  useEffect(() => {
+    if (arResult && arOverlay?.bbox) {
+      trackedBboxRef.current = arOverlay.bbox
+      trackedLabelRef.current = arResult.objectName
+      lastMatchTimeRef.current = Date.now()
+      trackingStateRef.current = 'locked'
+      setTrackingState('locked')
+    }
+  }, [arResult, arOverlay?.bbox])
+
+  // Run tracking health check on every detection update
+  useEffect(() => {
+    if (!arResult || !trackedBboxRef.current || !trackedLabelRef.current) return
+
+    const trackedBbox = trackedBboxRef.current
+    const trackedLabel = trackedLabelRef.current
+
+    const match = findMatchingDetection(detections, trackedLabel, trackedBbox)
+    const now = Date.now()
+
+    if (match) {
+      // Update tracked bbox to latest detection for smooth follow
+      trackedBboxRef.current = match.boundingBox
+      lastMatchTimeRef.current = now
+      trackingStateRef.current = 'locked'
+      setTrackingState('locked')
+    } else {
+      const elapsed = now - lastMatchTimeRef.current
+      if (elapsed >= GRACE_PERIOD_MS) {
+        trackingStateRef.current = 'lost'
+        setTrackingState('lost')
+      } else if (elapsed >= GRACE_BEFORE_UNSTABLE_MS) {
+        trackingStateRef.current = 'unstable'
+        setTrackingState('unstable')
+      }
+      // Else: still locked (grace period not reached)
+    }
+  }, [detections, arResult])
+
+  // Notify parent about detections
   useEffect(() => {
     if (onDetectionsChange) {
       onDetectionsChange(detections)
@@ -130,12 +216,37 @@ export function CameraView({
       {/*
         ── Small info badge inside camera when AR result is ready ──
         Does NOT cover the object — just a subtle indicator.
+        Adapts label and color based on tracking health state.
       */}
       {arResult && !arOverlay?.isAnalyzing && (
-        <div className="camera-info-ready-badge">
-          <span className="w-1.5 h-1.5 bg-hud-cyan rounded-full animate-pulse" />
-          <span className="font-mono-tech text-[9px] text-hud-cyan tracking-widest">
-            OBJECT LOCKED
+        <div
+          className={`camera-info-ready-badge ${
+            trackingState === 'lost'
+              ? 'camera-info-badge-lost'
+              : trackingState === 'unstable'
+                ? 'camera-info-badge-unstable'
+                : ''
+          }`}
+        >
+          <span
+            className={`w-1.5 h-1.5 rounded-full animate-pulse ${
+              trackingState === 'lost'
+                ? 'bg-yellow-400'
+                : trackingState === 'unstable'
+                  ? 'bg-yellow-400/70'
+                  : 'bg-hud-cyan'
+            }`}
+          />
+          <span
+            className={`font-mono-tech text-[9px] tracking-widest ${
+              trackingState === 'lost'
+                ? 'text-yellow-400'
+                : trackingState === 'unstable'
+                  ? 'text-yellow-400/70'
+                  : 'text-hud-cyan'
+            }`}
+          >
+            {trackingState === 'lost' ? 'TARGET LOST' : trackingState === 'unstable' ? 'TRACKING UNSTABLE' : 'OBJECT LOCKED'}
           </span>
         </div>
       )}
@@ -175,11 +286,14 @@ export function CameraView({
           confidence={arResult.confidence}
           isAnalyzing={false}
           result={arResult}
-          bbox={arOverlay?.bbox ?? stableObject?.bbox ?? { originX: 0.5, originY: 0.5, width: 0.1, height: 0.1 }}
+          bbox={trackedBboxRef.current ?? stableObject?.bbox ?? { originX: 0.5, originY: 0.5, width: 0.1, height: 0.1 }}
           videoWidth={videoWidth || 1}
           videoHeight={videoHeight || 1}
           mode="message"
           overlayPlacement="inside-camera"
+          trackingState={trackingState}
+          currentDetections={detections}
+          trackedLabel={arResult.objectName}
         />
       )}
 
