@@ -168,6 +168,21 @@ export function CameraView({
         <span className="ar-bracket ar-br" />
       </div>
 
+      {/* ── FINAL AR RESULT: compact floating message box INSIDE camera viewport ── */}
+      {arResult && !arOverlay?.isAnalyzing && (
+        <FloatingARLabel
+          label={arResult.objectName}
+          confidence={arResult.confidence}
+          isAnalyzing={false}
+          result={arResult}
+          bbox={{ originX: 0.5, originY: 0.5, width: 0.1, height: 0.1 }}
+          videoWidth={videoWidth || 1}
+          videoHeight={videoHeight || 1}
+          mode="message"
+          overlayPlacement="inside-camera"
+        />
+      )}
+
       {/* ── Scanning Frame Effect ── */}
       {isActive && (
         <>

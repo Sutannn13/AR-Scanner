@@ -354,44 +354,46 @@ body::after {
    CAMERA VIEW — RESPONSIVE
    ═══════════════════════════════════════════════════════ */
 
+/* ── Camera Container: 16:9 aspect ratio, responsive ── */
 .camera-container {
   position: relative;
   width: 100%;
+  /* Always 16:9 regardless of screen size */
+  aspect-ratio: 16 / 9;
+  max-width: 960px;
   overflow: hidden;
   border-radius: 12px;
   background: #000;
-  /* Mobile: taller camera for better viewfinder */
-  aspect-ratio: 3 / 4;
   transition: all 0.5s ease;
-}
-
-.camera-active {
-  border: 2px solid var(--hud-cyan);
-  box-shadow: 0 0 0 2px var(--hud-cyan), 0 0 40px rgba(0,255,213,0.25), 0 0 80px rgba(0,255,213,0.1);
-}
-
-.camera-idle {
-  border: 2px solid rgba(26,32,48,0.5);
 }
 
 .camera-video {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
   display: block;
+}
+
+@media (max-width: 480px) {
+  .camera-container {
+    border-radius: 8px;
+    /* 16:9 on mobile too */
+    aspect-ratio: 16 / 9;
+  }
 }
 
 @media (min-width: 640px) {
   .camera-container {
-    aspect-ratio: 4 / 3;
-    border-radius: 16px;
+    border-radius: 14px;
+    max-width: 900px;
   }
 }
 
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .camera-container {
-    aspect-ratio: 16 / 10;
     border-radius: 16px;
+    max-width: 960px;
   }
 }
 
@@ -1249,9 +1251,11 @@ button {
    ═══════════════════════════════════════════════════════════════════════ */
 
 /* ═══════════════════════════════════════════════════════════════════════
-   AR MESSAGE BOX — compact chat bubble that does NOT cover the object
+   AR MESSAGE BOX — compact chat bubble INSIDE camera viewport
+   Does NOT cover the object; uses collision-aware placement
    ═══════════════════════════════════════════════════════════════════════ */
 
+/* Base message box: relative for normal flow (below camera) */
 .ar-message-box {
   position: relative;
   width: 100%;
@@ -1262,9 +1266,25 @@ button {
   transition: opacity 0.4s ease, transform 0.4s ease;
 }
 
-/* Connector line from camera area to message box */
-.ar-message-connector {
-  display: none; /* Hidden by default — shown on desktop via CSS */
+/* Inside-camera mode: absolute positioned inside camera viewport */
+.ar-message-inside-camera {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  /* Default: bottom inside camera */
+  bottom: 14px;
+  top: auto;
+  width: auto;
+  max-width: min(360px, calc(100% - 24px));
+  margin-top: 0;
+  z-index: 45;
+  pointer-events: none;
+}
+
+/* Placement variant: top */
+.ar-message-placement-top.ar-message-inside-camera {
+  bottom: auto;
+  top: 14px;
 }
 
 /* Main message content container */
@@ -1497,27 +1517,47 @@ button {
 
   .ar-message-hint {
     font-size: 9px;
+    padding: 4px 8px;
+  }
+
+  /* Mobile: inside-camera message box smaller */
+  .ar-message-inside-camera {
+    left: 8px;
+    right: 8px;
+    bottom: 10px;
+    width: auto;
+    max-width: min(340px, calc(100% - 16px));
+  }
+
+  .ar-message-placement-top.ar-message-inside-camera {
+    top: 10px;
+    bottom: auto;
   }
 }
 
-/* ── Desktop: show connector line ── */
-@media (min-width: 768px) {
-  .ar-message-connector {
-    display: block;
-    position: absolute;
-    top: -20px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 1px;
-    height: 20px;
-    background: linear-gradient(
-      180deg,
-      transparent,
-      rgba(0, 255, 213, 0.4)
-    );
+/* ── Desktop: inside-camera message box size ── */
+@media (min-width: 640px) {
+  .ar-message-inside-camera {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    width: auto;
+    max-width: min(400px, calc(100% - 32px));
   }
 
-  .ar-message-box {
-    max-width: 420px;
+  .ar-message-placement-top.ar-message-inside-camera {
+    top: 16px;
+    bottom: auto;
   }
+}
+
+/* ── Max height with scroll for long content inside camera ── */
+.ar-message-inside-camera .ar-message-content {
+  max-height: 35vh;
+  overflow-y: auto;
+}
+
+/* Connector line: hidden (message bubble is inside camera, no need for connector) */
+.ar-message-connector {
+  display: none;
 }

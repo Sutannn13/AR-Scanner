@@ -23,6 +23,14 @@ interface FloatingARLabelProps {
    * - 'message': compact message box / chat bubble, does NOT cover the object
    */
   mode?: 'anchor' | 'center' | 'message'
+  /**
+   * Where to place the message box when mode='message':
+   * - 'inside-camera': compact floating bubble inside camera viewport (default for final result)
+   * - 'bottom': always at bottom (default)
+   * - 'top': always at top
+   * When 'inside-camera', collision-aware placement is used based on bbox center.
+   */
+  overlayPlacement?: 'inside-camera' | 'bottom' | 'top'
 }
 
 export function FloatingARLabel({
@@ -34,11 +42,22 @@ export function FloatingARLabel({
   videoWidth,
   videoHeight,
   mode,
+  overlayPlacement = 'bottom',
 }: FloatingARLabelProps) {
   const [fadeIn, setFadeIn] = useState(false)
 
   // Tentukan mode: jika ada result, default ke message (non-intrusive); sonst anchor
   const activeMode = mode ?? (result ? 'message' : 'anchor')
+
+  // Determine placement for message mode
+  // Collision-aware: if bbox center is in bottom half of camera, place bubble at top
+  const messagePlacement = (() => {
+    if (overlayPlacement === 'top') return 'top'
+    if (overlayPlacement === 'bottom') return 'bottom'
+    // 'inside-camera' — auto-detect based on bbox center
+    const bboxCenterY = bbox.originY + bbox.height / 2
+    return bboxCenterY > 0.55 ? 'top' : 'bottom'
+  })()
 
   // Guard: hanya anchor mode yang butuh valid bbox
   if (activeMode === 'anchor') {
@@ -89,17 +108,17 @@ export function FloatingARLabel({
   // ── Render result panel (mode center) ───────────────────────────────────────
   if (result && activeMode === 'message') {
     // ── MESSAGE MODE: compact chat bubble, does NOT cover the object ──
+    // Position inside camera viewport using absolute positioning
     const confidencePercent = Math.round(confidence * 100)
     return (
       <div
         className={`
           ar-message-box
-          ${fadeIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'}
+          ar-message-inside-camera
+          ar-message-placement-${messagePlacement}
+          ${fadeIn ? 'opacity-100' : 'opacity-0'}
         `}
       >
-        {/* Connector line from camera object to message box */}
-        <div className="ar-message-connector" />
-
         <div className="ar-message-content">
           {/* ── Header row: badge + object name ── */}
           <div className="ar-message-header">
