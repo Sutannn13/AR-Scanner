@@ -17,6 +17,11 @@ import type { DetectionResult } from '../types'
 // Tidak terlalu sering (hemat CPU) tapi cukup realtime
 const DETECTION_INTERVAL_MS = 300
 
+// Threshold dibuat lebih rendah agar objek nyata yang confidence-nya
+// tidak terlalu tinggi tetap bisa dipakai. EfficientDet-Lite0 tidak
+// mengenali semua objek, jadi 0.35 memberi ruang lebih untuk deteksi.
+const DETECTION_SCORE_THRESHOLD = 0.35
+
 // Model configuration - can be overridden via env var
 const MODEL_CONFIG = {
   wasmPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm',
@@ -176,9 +181,9 @@ export function useObjectDetector({ cameraReady, videoRef }: UseObjectDetectorPr
               const w = rawBbox.width ?? 0
               const h = rawBbox.height ?? 0
               if (w <= 0 || h <= 0) return false
-              // Only include detections with confidence >= 0.55
+              // Only include detections that meet the score threshold
               const score = d.categories[0]?.score ?? 0
-              if (score < 0.55) return false
+              if (score < DETECTION_SCORE_THRESHOLD) return false
               return true
             })
             .map((d) => {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AlertCircle, Cpu, Wifi, Timer, RefreshCw } from 'lucide-react'
 import { useCamera } from './hooks/useCamera'
 import { useObjectDetector } from './hooks/useObjectDetector'
@@ -66,6 +66,15 @@ export default function App() {
   const arResultRef = useRef(arResult)
   useEffect(() => { arResultRef.current = arResult }, [arResult])
   const GRACE_PERIOD_MS = 2000
+
+  // Fallback hold scan refs: ketika MediaPipe tidak mendeteksi objek apapun,
+  // kita still trigger AI setelah 3 detik hold berdasarkan frame capture.
+  const fallbackHoldStartRef = useRef<number | null>(null)
+  const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const fallbackTriggeredRef = useRef(false)
+  // Fallback progress untuk UI feedback
+  const [fallbackProgress, setFallbackProgress] = useState<number>(0)
+  const FALLBACK_HOLD_MS = 3000
 
   // ── AR Button Status ────────────────────────────────────────────────────────
   const getARButtonStatus = (): ARButtonStatus => {
@@ -146,6 +155,78 @@ export default function App() {
     triggerAIRecognitionRef.current = triggerAIRecognition
   }, [triggerAIRecognition])
 
+  // ── Fallback AI Recognition (frame scan when MediaPipe fails) ───────────────
+  // Tidak memerlukan DetectedObject dari MediaPipe.
+  // Trigger AI berdasarkan captureFrame() + bbox tengah fallback.
+  const triggerAIRecognitionFromFrame = useCallback(async () => {
+    if (analysisInProgressRef.current) return
+    analysisInProgressRef.current = true
+
+    const label = 'Frame Scan'
+    console.log(`[AR Session] 🤖 AI fallback called for: ${label}`)
+
+    setIsAIAnalyzing(true)
+    setTrackedLabel(label)
+
+    // Fallback bbox: area tengah 60% frame
+    const fallbackBbox = { originX: 0.2, originY: 0.2, width: 0.6, height: 0.6 }
+
+    setAROverlay({
+      targetLabel: label,
+      bbox: fallbackBbox,
+      result: null,
+      isAnalyzing: true,
+      showProgress: false,
+    })
+
+    try {
+      const base64 = captureFrame()
+      if (!base64) {
+        throw new Error('Gagal mengambil gambar dari kamera')
+      }
+
+      const result = await analyzeImage(base64)
+
+      setARResult(result)
+
+      // Overlay tetap di center mode
+      setAROverlay({
+        targetLabel: label,
+        bbox: fallbackBbox,
+        result,
+        isAnalyzing: false,
+        showProgress: false,
+      })
+
+      console.log(`[AR Session] ✅ Fallback result displayed: ${result.objectName}`)
+      finishARScanSession()
+    } catch (err) {
+      console.error(`[AR Session] ❌ Fallback analysis failed:`, err)
+      clearAROverlay()
+      clearARResult()
+      resetARScanSession()
+    } finally {
+      analysisInProgressRef.current = false
+      setIsAIAnalyzing(false)
+    }
+  }, [
+    captureFrame,
+    setARResult,
+    setAROverlay,
+    setTrackedLabel,
+    setIsAIAnalyzing,
+    clearAROverlay,
+    clearARResult,
+    finishARScanSession,
+    resetARScanSession,
+  ])
+
+  // Ref for fallback function
+  const triggerAIRecognitionFromFrameRef = useRef(triggerAIRecognitionFromFrame)
+  useEffect(() => {
+    triggerAIRecognitionFromFrameRef.current = triggerAIRecognitionFromFrame
+  }, [triggerAIRecognitionFromFrame])
+
   // ── Stability tracking - AR session aware ──────────────────────────────────
   const handleOnLost = useCallback((label: string) => {
     // HANYA log kalau tracking label yang sedang dianalisis
@@ -214,6 +295,82 @@ export default function App() {
     updateDetections(detections)
   }, [detections, updateDetections])
 
+  // ── Fallback hold timer: ketika MediaPipe tidak mendeteksi objek ──────────
+  // Jika Armed + belum analyzed + detections kosong → mulai fallback hold 3 detik.
+  // Jika detections muncul kembali → reset fallback timer.
+  useEffect(() => {
+    const isArmed = isScanArmed && !hasAnalyzedCurrentTarget
+
+    if (!isArmed) {
+      // Clear fallback state when not armed
+      if (fallbackTimerRef.current) {
+        clearTimeout(fallbackTimerRef.current)
+        fallbackTimerRef.current = null
+      }
+      fallbackHoldStartRef.current = null
+      fallbackTriggeredRef.current = false
+      setFallbackProgress(0)
+      return
+    }
+
+    if (detections.length > 0) {
+      // MediaPipe mendeteksi objek → reset fallback, biarkan stability flow yang jalan
+      if (fallbackTimerRef.current) {
+        clearTimeout(fallbackTimerRef.current)
+        fallbackTimerRef.current = null
+      }
+      fallbackHoldStartRef.current = null
+      setFallbackProgress(0)
+      return
+    }
+
+    // detections.length === 0 AND isArmed → mulai/manjutkan fallback hold
+    if (!fallbackHoldStartRef.current) {
+      fallbackHoldStartRef.current = performance.now()
+      fallbackTriggeredRef.current = false
+      console.log('[AR Session] fallback hold started (no MediaPipe detections)')
+    }
+
+    // Progress update setiap 100ms
+    const progressInterval = setInterval(() => {
+      if (fallbackHoldStartRef.current) {
+        const elapsed = performance.now() - fallbackHoldStartRef.current
+        const progress = Math.min(100, Math.round((elapsed / FALLBACK_HOLD_MS) * 100))
+        setFallbackProgress(progress)
+      }
+    }, 100)
+
+    // Timer 3 detik untuk trigger AI
+    fallbackTimerRef.current = setTimeout(() => {
+      if (
+        isScanArmed &&
+        !hasAnalyzedCurrentTarget &&
+        !analysisInProgressRef.current &&
+        !fallbackTriggeredRef.current
+      ) {
+        fallbackTriggeredRef.current = true
+        console.log('[AR Session] fallback AI called once (frame scan)')
+        markTargetAnalyzed('fallback_frame_scan')
+        // Panggil via ref untuk avoid circular dependency
+        triggerAIRecognitionFromFrameRef.current()
+      }
+    }, FALLBACK_HOLD_MS)
+
+    return () => {
+      clearInterval(progressInterval)
+    }
+  }, [isScanArmed, hasAnalyzedCurrentTarget, detections, markTargetAnalyzed])
+
+  // Cleanup fallback timer on unmount
+  useEffect(() => {
+    return () => {
+      if (fallbackTimerRef.current) {
+        clearTimeout(fallbackTimerRef.current)
+        fallbackTimerRef.current = null
+      }
+    }
+  }, [])
+
   // ── Cleanup grace period timer on unmount ─────────────────────────────────
   useEffect(() => {
     return () => {
@@ -233,6 +390,14 @@ export default function App() {
     resetStability()
     analysisInProgressRef.current = false
     stableProgressRef.current = 0
+    // Clear fallback refs
+    if (fallbackTimerRef.current) {
+      clearTimeout(fallbackTimerRef.current)
+      fallbackTimerRef.current = null
+    }
+    fallbackHoldStartRef.current = null
+    fallbackTriggeredRef.current = false
+    setFallbackProgress(0)
 
     // Start the AR session
     startARScanSession()
@@ -247,12 +412,20 @@ export default function App() {
       clearTimeout(targetLostTimerRef.current)
       targetLostTimerRef.current = null
     }
+    // Cancel fallback timer
+    if (fallbackTimerRef.current) {
+      clearTimeout(fallbackTimerRef.current)
+      fallbackTimerRef.current = null
+    }
 
     clearAROverlay()
     clearARResult()
     resetStability()
     analysisInProgressRef.current = false
     stableProgressRef.current = 0
+    fallbackHoldStartRef.current = null
+    fallbackTriggeredRef.current = false
+    setFallbackProgress(0)
 
     resetARScanSession()
   }, [clearAROverlay, clearARResult, resetStability, resetARScanSession])
@@ -303,9 +476,16 @@ export default function App() {
 
   // ── Instruction text based on session state ────────────────────────────────
   const getInstructionText = (): string | null => {
-    if (arButtonStatus === 'waiting') return 'Arahkan kamera ke objek dan tahan 3 detik'
     if (arButtonStatus === 'analyzing') return 'Menganalisis objek...'
     if (arButtonStatus === 'done') return 'Objek terdeteksi! Arahkan ke objek lain atau tekan SCAN AGAIN'
+    // Fallback mode: no detections but armed
+    if (isScanArmed && !hasAnalyzedCurrentTarget && detections.length === 0) {
+      if (fallbackProgress > 0) {
+        return `Menganalisis area kamera dalam ${Math.ceil((FALLBACK_HOLD_MS - (fallbackHoldStartRef.current ? performance.now() - fallbackHoldStartRef.current : 0)) / 1000)}...`
+      }
+      return 'Objek belum dikenali. Tahan kamera tetap 3 detik untuk analisis AI.'
+    }
+    if (arButtonStatus === 'waiting') return 'Arahkan kamera ke objek dan tahan 3 detik'
     return null
   }
 
