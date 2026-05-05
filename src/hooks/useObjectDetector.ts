@@ -166,8 +166,8 @@ export function useObjectDetector({ cameraReady, videoRef }: UseObjectDetectorPr
           const vw = video.videoWidth || 1
           const vh = video.videoHeight || 1
 
-          // Konversi hasil MediaPipe ke format yang kita pakai
-          // MediaPipe returns pixel values - we need to normalize to 0-1
+          // Convert MediaPipe results to our format
+          // Apply confidence threshold and keep top 3 only
           const converted: DetectionResult[] = results.detections
             .filter((d) => {
               // Filter out invalid detections
@@ -175,7 +175,11 @@ export function useObjectDetector({ cameraReady, videoRef }: UseObjectDetectorPr
               if (!rawBbox) return false
               const w = rawBbox.width ?? 0
               const h = rawBbox.height ?? 0
-              return w > 0 && h > 0
+              if (w <= 0 || h <= 0) return false
+              // Only include detections with confidence >= 0.55
+              const score = d.categories[0]?.score ?? 0
+              if (score < 0.55) return false
+              return true
             })
             .map((d) => {
               const raw = d.boundingBox!
@@ -192,19 +196,22 @@ export function useObjectDetector({ cameraReady, videoRef }: UseObjectDetectorPr
               }
             })
 
-          console.log(
-            `[useObjectDetector] 📍 Deteksi: ${converted.length} objek, video: ${vw}x${vh}`,
-            converted.map((d) => ({
-              label: d.label,
-              bbox: d.boundingBox,
-            }))
-          )
-
-          // Sort: confidence tertinggi di depan
+          // Sort by confidence descending
           converted.sort((a, b) => b.confidence - a.confidence)
 
-          lastDetectionRef.current = converted
-          setDetections(converted)
+          // Keep only top 3 detections
+          const topDetections = converted.slice(0, 3)
+
+          // Only log summary, not full array
+          if (topDetections.length > 0) {
+            console.log(
+              `[useObjectDetector] Detections: ${topDetections.length} (max 3 shown)`,
+              topDetections.map((d) => `${d.label} (${Math.round(d.confidence * 100)}%)`)
+            )
+          }
+
+          lastDetectionRef.current = topDetections
+          setDetections(topDetections)
 
           // Update video dimensions
           setVideoDimensions({ width: vw, height: vh })

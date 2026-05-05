@@ -87,6 +87,7 @@ export function CameraView({
         camera-container
         ${isActive ? 'scanning camera-active' : 'camera-idle'}
         ${isScanArmed ? 'ar-armed' : ''}
+        ${arResult ? 'result-mode' : ''}
       `}
     >
       {/* ── Video Feed ── */}
