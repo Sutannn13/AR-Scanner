@@ -315,6 +315,24 @@ body::after {
   to   { width: 0%; }
 }
 
+/* ── Cooldown Badge (minimal, shown when result exists) ─────────────────────── */
+.cooldown-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(250,204,21,0.06);
+  border: 1px solid rgba(250,204,21,0.15);
+}
+
+.cooldown-badge-text {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: rgba(250,204,21,0.45);
+}
+
 /* ── Scan Button Wrapper ──────────────────────────── */
 .scan-button-wrapper {
   display: flex;

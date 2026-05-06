@@ -208,7 +208,9 @@ export function useObjectDetector({ cameraReady, videoRef }: UseObjectDetectorPr
           const topDetections = converted.slice(0, 3)
 
           // Only log summary, not full array
-          if (topDetections.length > 0) {
+          const isDebugMode = import.meta.env.VITE_DEBUG_LOGS !== 'false'
+
+          if (isDebugMode && topDetections.length > 0) {
             console.log(
               `[useObjectDetector] Detections: ${topDetections.length} (max 3 shown)`,
               topDetections.map((d) => `${d.label} (${Math.round(d.confidence * 100)}%)`)

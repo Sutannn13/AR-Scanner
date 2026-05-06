@@ -11,6 +11,9 @@ import { InfoCard } from './components/InfoCard'
 import { ScanHistory } from './components/ScanHistory'
 import type { DetectedObject } from './types'
 
+// ── Global debug mode flag ────────────────────────────────────────────────────
+const isDebugMode = import.meta.env.VITE_DEBUG_LOGS !== 'false'
+
 // ─────────────────────────────────────────────────────────────────────────────
 // AR Button Status - derived from AR session state
 // ─────────────────────────────────────────────────────────────────────────────
@@ -243,7 +246,7 @@ export default function App() {
   const handleOnLost = useCallback((label: string) => {
     // HANYA log kalau tracking label yang sedang dianalisis
     if (trackedLabel === label) {
-      console.log(`[AR Session] 🔴 Target lost: ${label} — starting grace period ${GRACE_PERIOD_MS}ms`)
+      if (isDebugMode) console.log(`[AR Session] 🔴 Target lost: ${label} — starting grace period ${GRACE_PERIOD_MS}ms`)
 
       // Jangan hapus result imediatamente — beri grace period
       if (targetLostTimerRef.current) {
@@ -253,7 +256,7 @@ export default function App() {
       targetLostTimerRef.current = setTimeout(() => {
         // Setelah grace period: baru hapus jika result masih ada
         if (arResultRef.current) {
-          console.log(`[AR Session] 🗑️ Grace period expired — clearing result`)
+          if (isDebugMode) console.log(`[AR Session] 🗑️ Grace period expired — clearing result`)
           clearAROverlay()
           clearARResult()
           analysisInProgressRef.current = false
@@ -340,7 +343,7 @@ export default function App() {
     if (!fallbackHoldStartRef.current) {
       fallbackHoldStartRef.current = performance.now()
       fallbackTriggeredRef.current = false
-      console.log('[AR Session] fallback hold started (no MediaPipe detections)')
+      if (isDebugMode) console.log('[AR Session] fallback hold started (no MediaPipe detections)')
     }
 
     // Progress update setiap 100ms
@@ -361,7 +364,7 @@ export default function App() {
         !fallbackTriggeredRef.current
       ) {
         fallbackTriggeredRef.current = true
-        console.log('[AR Session] fallback AI called once (frame scan)')
+        if (isDebugMode) console.log('[AR Session] fallback AI called once (frame scan)')
         markTargetAnalyzed('fallback_frame_scan')
         // Panggil via ref untuk avoid circular dependency
         triggerAIRecognitionFromFrameRef.current()
@@ -602,8 +605,8 @@ export default function App() {
           </div>
         )}
 
-        {/* Cooldown Timer */}
-        {cooldownSeconds > 0 && (
+        {/* Cooldown Timer — show only when no result exists */}
+        {cooldownSeconds > 0 && !arResult && (
           <div className="cooldown-banner">
             <Timer size={16} className="text-yellow-400 flex-shrink-0" />
             <div className="cooldown-content">
@@ -617,6 +620,14 @@ export default function App() {
                 <div className="cooldown-bar-fill" style={{ animationDuration: `${cooldownSeconds}s` }} />
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Cooldown badge — shown only when result already exists (non-distracting) */}
+        {cooldownSeconds > 0 && arResult && (
+          <div className="cooldown-badge">
+            <Timer size={10} className="text-yellow-400/60" />
+            <span className="cooldown-badge-text">Backup AI aktif</span>
           </div>
         )}
 
